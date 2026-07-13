@@ -174,6 +174,7 @@
         <option value="weekly">שבועי (יום קבוע בשבוע)</option>
         <option value="monthly">חודשי (תאריך קבוע בחודש)</option>
         <option value="onetime">חד-פעמי (יום מסוים)</option>
+        <option value="budget">תקציב חודשי כללי (ללא תאריך)</option>
       </select>
       <div class="miniform" style="margin-top:10px">
         <div class="g2">
@@ -199,6 +200,14 @@
     </div>
 
     <div class="card">
+      <h2>🏠 יעד חיסכון חודשי</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:8px">לא חובה. אם תגדיר יעד — קטגוריית "חיסכון לבית" תופיע בסיכום החודשי עם ניצול מול היעד.</div>
+      <div class="fld-btn-row">
+        <input id="savTargetInput" type="number" inputmode="decimal" placeholder="0" style="max-width:200px">
+        <button class="btn" id="savTargetSave">שמור</button>
+      </div>
+    </div>
+    <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <h2 style="margin:0">🗂️ תכנוני החודש</h2>
         <button class="btn soft sm" id="copyPrev">📋 העתק מחודש קודם</button>
@@ -222,6 +231,25 @@
     </div>
   </section>
 
+  <!-- ===== SAVINGS ===== -->
+  <section id="tab-sav" class="hide">
+    <div class="card" style="text-align:center">
+      <h2 style="justify-content:center">🏠 חיסכון לבית</h2>
+      <div class="muted" style="font-size:13px">סה״כ נצבר עד כה</div>
+      <div style="font-size:34px;font-weight:800;color:var(--brand);letter-spacing:-1px" id="savTotal">₪0</div>
+      <div style="height:14px;border-radius:99px;background:var(--line);overflow:hidden;margin:14px 0 8px"><span id="savBar" style="display:block;height:100%;border-radius:99px;background:var(--good);width:0%"></span></div>
+      <div class="row" style="justify-content:space-between;font-size:13px;font-weight:700">
+        <span id="savPct" class="muted">0% מהיעד</span>
+        <span class="muted">יעד: ₪50,000</span>
+      </div>
+      <div id="savRemain" class="muted" style="font-size:13px;margin-top:4px"></div>
+    </div>
+    <div class="card">
+      <h2>🧾 היסטוריית חיסכון</h2>
+      <div id="savList"></div>
+    </div>
+  </section>
+
   <!-- ===== BACKUP / SYNC ===== -->
   <section id="tab-more" class="hide">
     <div class="card">
@@ -238,9 +266,12 @@
         <span class="muted" style="font-size:13px">מצב: <b id="syncStatus">כבוי</b></span>
       </div>
     </div>
-    <div class="card" id="installCard" style="display:none">
+    <div class="card" id="installCard">
       <h2>📲 התקנה כאפליקציה</h2>
-      <button class="btn" id="installBtn">התקן</button>
+      <div class="muted" style="font-size:13px;margin-bottom:10px">התקנה על מסך הבית — בלי חנות אפליקציות.</div>
+      <button class="btn" id="installBtn" style="display:none">📲 התקן אפליקציה</button>
+      <div id="iosNote" class="muted" style="font-size:13px;display:none">להתקנה באייפון: לחץ על כפתור <b>השיתוף</b> למטה, ואז <b>הוסף למסך הבית</b>.</div>
+      <div id="installedNote" class="muted" style="font-size:13px;display:none">✓ האפליקציה מותקנת.</div>
     </div>
     <div class="card">
       <h2>💾 גיבוי ושחזור</h2>
@@ -259,6 +290,7 @@
   <button data-tab="cal" class="on"><span class="ic">📅</span>לוח</button>
   <button data-tab="plan"><span class="ic">🔁</span>תכנון</button>
   <button data-tab="sum"><span class="ic">📋</span>סיכום</button>
+  <button data-tab="sav"><span class="ic">🏠</span>חיסכון</button>
   <button data-tab="more"><span class="ic">💾</span>גיבוי</button>
 </div></nav>
 
@@ -319,6 +351,50 @@ function plansInMonth(y,m){return db.plans.filter(p=>p.hy===y&&p.hm===m);}
 function reportsInMonth(y,m){return db.reports.filter(r=>r.hy===y&&r.hm===m);}
 function sum(arr){return arr.reduce((a,x)=>a+(+x.amount||0),0);}
 function actualForPlan(planId){return sum(db.reports.filter(r=>r.planId===planId));}
+const SAV="SAVINGS";
+function datedPlans(y,m){return db.plans.filter(p=>p.hy===y&&p.hm===m&&p.origin!=="budget");}
+function budgets(y,m){return db.plans.filter(p=>p.hy===y&&p.hm===m&&p.origin==="budget");}
+function savTargetOf(y,m){const v=db.months[hKey(y,m)];return (v&&v.savingsTarget)?+v.savingsTarget:0;}
+function savingsAll(){return db.reports.filter(r=>r.planId===SAV);}
+function categories(y,m){
+  const cats=[],map={};
+  datedPlans(y,m).forEach(p=>{if(!map[p.name])map[p.name]={name:p.name,planned:0,ids:[]};map[p.name].planned+=+p.amount;map[p.name].ids.push(p.id);});
+  Object.values(map).forEach(g=>cats.push({name:g.name,planned:g.planned,actual:sum(db.reports.filter(r=>g.ids.indexOf(r.planId)>=0)),kind:"dated"}));
+  budgets(y,m).forEach(b=>cats.push({name:b.name,planned:+b.amount,actual:sum(reportsInMonth(y,m).filter(r=>r.planId===b.id)),kind:"budget",id:b.id}));
+  const st=savTargetOf(y,m),sa=sum(reportsInMonth(y,m).filter(r=>r.planId===SAV));
+  if(st>0||sa>0)cats.push({name:"חיסכון לבית",planned:st,actual:sa,kind:"savings"});
+  return cats;
+}
+function linkOptionsHTML(f,sel){
+  const hh=hebrewFromFixed(f),dayPlans=plansOn(f),buds=budgets(hh.year,hh.month);
+  let o='<option value=""'+(!sel?" selected":"")+'>ללא תכנון</option>';
+  if(dayPlans.length){o+='<optgroup label="תכנון היום">';dayPlans.forEach(p=>o+='<option value="'+p.id+'"'+(sel===p.id?" selected":"")+'>'+esc(p.name)+' ('+money(p.amount)+')</option>');o+='</optgroup>';}
+  o+='<optgroup label="תקציבים חודשיים">';
+  buds.forEach(b=>o+='<option value="'+b.id+'"'+(sel===b.id?" selected":"")+'>'+esc(b.name)+' ('+money(b.amount)+')</option>');
+  o+='<option value="'+SAV+'"'+(sel===SAV?" selected":"")+'>חיסכון לבית</option></optgroup>';
+  return o;
+}
+function linkLabelFor(r){
+  if(r.planId===SAV){const t=savTargetOf(r.hy,r.hm);let ex="";if(t){const u=sum(reportsInMonth(r.hy,r.hm).filter(x=>x.planId===SAV));ex=" · נותר החודש "+money(t-u);}return {label:"חיסכון לבית",extra:ex};}
+  if(r.planId){const p=db.plans.find(x=>x.id===r.planId);if(p){let ex="";if(p.origin==="budget"){const u=sum(reportsInMonth(r.hy,r.hm).filter(x=>x.planId===p.id));ex=" · נותר "+money(p.amount-u);}return {label:"↳ "+p.name,extra:ex};}}
+  return {label:"ללא תכנון",extra:""};
+}
+function renderSavings(){
+  const all=savingsAll(),total=sum(all),goal=50000,pct=Math.min(Math.round(total/goal*100),100);
+  $("#savTotal").textContent=money(total);
+  $("#savBar").style.width=pct+"%";
+  $("#savPct").textContent=pct+"% מהיעד";
+  $("#savRemain").textContent= total>=goal?"הגעת ליעד! 🎉":"נותר: "+money(goal-total);
+  const box=$("#savList");
+  if(!all.length){box.innerHTML='<div class="empty">אין עדיין דיווחי חיסכון. דווח דרך כרטיס היום בלוח ובחר "חיסכון לבית".</div>';return;}
+  box.innerHTML="";
+  all.slice().sort((a,b)=>b.fixed-a.fixed).forEach(r=>{
+    const el=document.createElement("div");el.className="listitem";
+    el.innerHTML='<div><div class="nm">'+money(r.amount)+'</div><div class="sub">'+heDay(r.hd)+' '+hebMonthName(r.hy,r.hm)+' '+heYear(r.hy)+'</div></div><button class="btn sm soft" data-esav="'+r.id+'">✎</button>';
+    box.appendChild(el);
+  });
+  box.querySelectorAll("[data-esav]").forEach(b=>b.onclick=()=>{modalFixed=null;editReport(b.getAttribute("data-esav"));});
+}
 
 /* ---- rendering ---- */
 function render(){
@@ -328,6 +404,7 @@ function render(){
   renderPlanning();
   renderSummary();
   renderProgress();
+  renderSavings();
 }
 
 function renderCalendar(){
@@ -394,7 +471,7 @@ function renderDayCard(){
   else plans.forEach(p=>{ph+='<div class="rowline"><div><div class="nm">'+esc(p.name)+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt">'+money(p.amount)+'</span><button class="btn sm soft" data-editplan="'+p.id+'">✎</button></div></div>';});
   let rh="";
   if(!reps.length) rh='<div class="empty">לא דווחו הוצאות ליום זה</div>';
-  else reps.forEach(r=>{const pl=r.planId?db.plans.find(x=>x.id===r.planId):null;rh+='<div class="rowline"><div><div class="nm">'+esc(r.name)+'</div><div class="sub">'+(pl?"↳ "+esc(pl.name):"ללא תכנון")+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt">'+money(r.amount)+'</span><button class="btn sm soft" data-editrep="'+r.id+'">✎</button></div></div>';});
+  else reps.forEach(r=>{const ll=linkLabelFor(r);rh+='<div class="rowline"><div><div class="nm">'+esc(r.name)+'</div><div class="sub">'+esc(ll.label)+esc(ll.extra)+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt">'+money(r.amount)+'</span><button class="btn sm soft" data-editrep="'+r.id+'">✎</button></div></div>';});
   const html='<div class="modal"><div class="sheet">'+
     '<div class="mhead"><span class="mt">יום '+DAYS[weekdayOf(f)]+' · '+heDay(hd)+' '+hebMonthName(hy,hm)+' '+heYear(hy)+'<br><span class="muted" style="font-size:12px;font-weight:600">'+g.day+'/'+g.month+'/'+g.year+'</span></span><button class="mc" id="mClose">✕</button></div>'+
     '<div class="sec-h">מתוכנן ליום זה</div>'+ph+
@@ -424,9 +501,7 @@ function dayPlanForm(){
   };
 }
 function dayReportForm(){
-  const plans=plansOn(modalFixed);
-  let opt='<option value="">ללא תכנון</option>';
-  plans.forEach(p=>opt+='<option value="'+p.id+'">'+esc(p.name)+' ('+money(p.amount)+')</option>');
+  let opt=linkOptionsHTML(modalFixed,"");
   $("#dayForm").innerHTML='<div class="miniform"><div class="sec-h" style="margin-top:0">דיווח על הוצאה</div><div class="g2"><div><label class="fld">תיאור</label><input id="drName" placeholder="תיאור"></div><div><label class="fld">סכום (₪)</label><input id="drAmt" type="number" inputmode="decimal" placeholder="0"></div></div><label class="fld">שייך לתכנון</label><select id="drLink">'+opt+'</select><button class="btn block" id="drSave">שמור דיווח</button></div>';
   $("#drLink").onchange=()=>{const p=db.plans.find(x=>x.id===$("#drLink").value);if(p){if(!$("#drName").value)$("#drName").value=p.name;if(!$("#drAmt").value)$("#drAmt").value=p.amount;}};
   $("#drSave").onclick=()=>{
@@ -445,7 +520,7 @@ function editPlan(id){
   const fromDay=modalFixed;
   const html='<div class="modal"><div class="sheet"><div class="mhead"><span class="mt">עריכת תכנון</span><button class="mc" id="mClose">✕</button></div>'+
     '<div class="miniform"><div class="g2"><div><label class="fld">תיאור</label><input id="epName" value="'+esc(p.name)+'"></div><div><label class="fld">סכום (₪)</label><input id="epAmt" type="number" inputmode="decimal" value="'+(+p.amount)+'"></div></div>'+
-    '<label class="fld" style="margin-top:2px">תאריך (אפשר להזיז ליום אחר)</label>'+dateSelectsHTML(p.hy,p.hm,p.hd,"ep")+
+    (p.origin==="budget"?"":'<label class="fld" style="margin-top:2px">תאריך (אפשר להזיז ליום אחר)</label>'+dateSelectsHTML(p.hy,p.hm,p.hd,"ep"))+
     '<div class="row" style="margin-top:6px"><button class="btn" id="epSave">שמור</button><button class="btn danger" id="epDel">מחק</button></div></div></div></div>';
   $("#modalRoot").innerHTML=html;
   $("#mClose").onclick=()=>backFromEdit(fromDay);
@@ -453,7 +528,7 @@ function editPlan(id){
   $("#epSave").onclick=()=>{
     p.name=$("#epName").value.trim()||p.name;
     p.amount=parseFloat($("#epAmt").value)||0;
-    const dt=readDateSelects("ep"); p.hy=dt.hy;p.hm=dt.hm;p.hd=dt.hd;p.fixed=dt.fixed; p.origin=p.origin==="weekly"?"day":p.origin;
+    if(p.origin!=="budget"){const dt=readDateSelects("ep"); p.hy=dt.hy;p.hm=dt.hm;p.hd=dt.hd;p.fixed=dt.fixed; if(p.origin==="weekly")p.origin="day";}
     save();toast("עודכן ✓");render();backFromEdit(fromDay);
   };
   $("#epDel").onclick=()=>{
@@ -465,9 +540,7 @@ function editPlan(id){
 function editReport(id){
   const r=db.reports.find(x=>x.id===id); if(!r) return;
   const fromDay=modalFixed;
-  const plans=plansOn(r.fixed);
-  let opt='<option value="">ללא תכנון</option>';
-  plans.forEach(p=>opt+='<option value="'+p.id+'"'+(r.planId===p.id?" selected":"")+'>'+esc(p.name)+' ('+money(p.amount)+')</option>');
+  let opt=linkOptionsHTML(r.fixed,r.planId);
   const html='<div class="modal"><div class="sheet"><div class="mhead"><span class="mt">עריכת דיווח</span><button class="mc" id="mClose">✕</button></div>'+
     '<div class="miniform"><div class="g2"><div><label class="fld">תיאור</label><input id="erName" value="'+esc(r.name)+'"></div><div><label class="fld">סכום (₪)</label><input id="erAmt" type="number" inputmode="decimal" value="'+(+r.amount)+'"></div></div>'+
     '<label class="fld">שייך לתכנון</label><select id="erLink">'+opt+'</select>'+
@@ -491,19 +564,21 @@ function renderPlanning(){
   $("#incLbl").textContent="("+monthLabel(view.y,view.m)+")";
   const inc=db.months[hKey(view.y,view.m)]?.income;
   $("#incInput").value=(inc===undefined?"":inc);
+  const si=$("#savTargetInput"); if(si){const stv=savTargetOf(view.y,view.m);si.value=stv||"";}
   const plans=plansInMonth(view.y,view.m);
   const box=$("#planList");
   if(!plans.length){ box.innerHTML='<div class="empty">אין תכנונים החודש. הוסף למעלה, או "העתק מחודש קודם".</div>'; }
   else{
-    const labels={weekly:"שבועי",monthly:"חודשי",onetime:"חד-פעמי",day:"מהלוח"};
+    const labels={weekly:"שבועי",monthly:"חודשי",onetime:"חד-פעמי",day:"מהלוח",budget:"תקציבים חודשיים"};
     box.innerHTML="";
-    ["weekly","monthly","onetime","day"].forEach(kind=>{
-      const items=plans.filter(p=>p.origin===kind).sort((a,b)=>a.fixed-b.fixed);
+    ["weekly","monthly","onetime","day","budget"].forEach(kind=>{
+      const items=plans.filter(p=>p.origin===kind).sort((a,b)=>(a.fixed||0)-(b.fixed||0));
       if(!items.length) return;
       const h=document.createElement("div"); h.className="sec-h"; h.textContent=labels[kind]; box.appendChild(h);
       items.forEach(p=>{
         const el=document.createElement("div"); el.className="listitem";
-        el.innerHTML='<div><div class="nm">'+esc(p.name)+'</div><div class="sub">'+heDay(p.hd)+' '+hebMonthName(p.hy,p.hm)+(kind==="weekly"?" · יום "+DAYS[p.dow]:"")+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt">'+money(p.amount)+'</span><button class="btn sm soft" data-ep="'+p.id+'">✎</button></div>';
+        const sub=kind==="budget"?"תקציב לכל החודש":(heDay(p.hd)+' '+hebMonthName(p.hy,p.hm)+(kind==="weekly"?" · יום "+DAYS[p.dow]:""));
+        el.innerHTML='<div><div class="nm">'+esc(p.name)+'</div><div class="sub">'+sub+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt">'+money(p.amount)+'</span><button class="btn sm soft" data-ep="'+p.id+'">✎</button></div>';
         box.appendChild(el);
       });
     });
@@ -522,7 +597,7 @@ function planGroups(y,m){
 function noPlanReports(y,m){ return reportsInMonth(y,m).filter(r=>!r.planId); }
 function renderProgress(){
   const box=$("#progressList");
-  const groups=planGroups(view.y,view.m).filter(g=>g.planned>0);
+  const groups=categories(view.y,view.m).filter(g=>g.planned>0);
   if(!groups.length){ box.innerHTML='<div class="empty">אין תכנונים החודש</div>'; return; }
   groups.sort((a,b)=>b.planned-a.planned);
   box.innerHTML="";
@@ -539,17 +614,20 @@ function renderProgress(){
 
 /* ---- summary ---- */
 function renderSummary(){
-  const groups=planGroups(view.y,view.m);
+  const groups=categories(view.y,view.m);
   const wrap=$("#sumTableWrap");
   if(!groups.length){ wrap.innerHTML='<div class="empty">אין תכנונים החודש</div>'; }
   else{
     groups.sort((a,b)=>b.planned-a.planned);
-    let tp=0,ta=0,rows="";
-    groups.forEach(g=>{ tp+=g.planned; ta+=g.actual; const diff=g.planned-g.actual; const pct=g.planned>0?Math.round(g.actual/g.planned*100):0; const over=g.actual>g.planned;
-      rows+='<tr><td>'+esc(g.name)+'</td><td class="num">'+money(g.planned)+'</td><td class="num">'+money(g.actual)+'</td><td class="num '+(over?"g-bad":"g-good")+'">'+(diff<0?"-":"")+money(Math.abs(diff))+'</td><td class="num '+(over?"g-bad":"g-good")+'">'+pct+'%</td></tr>'; });
-    const tdiff=tp-ta;
+    let tp=0,rows="";
+    groups.forEach(g=>{ tp+=g.planned;
+      const over=g.actual>g.planned&&g.planned>0;
+      let plannedCell=g.planned>0?money(g.planned):"—",diffCell="—",pctCell="—",cls="";
+      if(g.planned>0){const diff=g.planned-g.actual;cls=over?"g-bad":"g-good";diffCell=(diff<0?"-":"")+money(Math.abs(diff));pctCell=Math.round(g.actual/g.planned*100)+"%";}
+      rows+='<tr><td>'+esc(g.name)+'</td><td class="num">'+plannedCell+'</td><td class="num">'+money(g.actual)+'</td><td class="num '+cls+'">'+diffCell+'</td><td class="num '+cls+'">'+pctCell+'</td></tr>'; });
+    const taAll=sum(reportsInMonth(view.y,view.m)),tdiff=tp-taAll;
     wrap.innerHTML='<table class="tbl"><thead><tr><th>הוצאה</th><th>מתוכנן</th><th>בפועל</th><th>הפרש</th><th>ניצול</th></tr></thead><tbody>'+rows+
-      '<tr class="tot"><td>סה״כ</td><td class="num">'+money(tp)+'</td><td class="num">'+money(ta)+'</td><td class="num '+(tdiff<0?"g-bad":"g-good")+'">'+(tdiff<0?"-":"")+money(Math.abs(tdiff))+'</td><td class="num">'+(tp>0?Math.round(ta/tp*100):0)+'%</td></tr></tbody></table>';
+      '<tr class="tot"><td>סה״כ</td><td class="num">'+money(tp)+'</td><td class="num">'+money(taAll)+'</td><td class="num '+(tdiff<0?"g-bad":"g-good")+'">'+(tdiff<0?"-":"")+money(Math.abs(tdiff))+'</td><td class="num">'+(tp>0?Math.round(taAll/tp*100):0)+'%</td></tr></tbody></table>';
   }
   const nps=noPlanReports(view.y,view.m);
   const box=$("#sumNoPlan");
@@ -576,13 +654,16 @@ $("#incSave").onclick=()=>{
 $("#planKind").onchange=()=>{
   const k=$("#planKind").value;
   $("#pWeeklyWrap").classList.toggle("hide",k!=="weekly");
-  $("#pDayWrap").classList.toggle("hide",k==="weekly");
+  $("#pDayWrap").classList.toggle("hide",k!=="monthly"&&k!=="onetime");
 };
 $("#pAdd").onclick=()=>{
   const kind=$("#planKind").value, name=$("#pName").value.trim(), amt=parseFloat($("#pAmt").value);
   if(!name){toast("הזן תיאור");return;} if(isNaN(amt)){toast("הזן סכום");return;}
   const y=view.y,m=view.m,ld=lastDayOfHMonth(y,m),start=fixedFromHebrew(y,m,1);
-  if(kind==="weekly"){
+  if(kind==="budget"){
+    db.plans.push({id:uid(),name,amount:amt,hy:y,hm:m,origin:"budget"});
+    toast("נוסף ✓");
+  } else if(kind==="weekly"){
     const dow=+$("#pDow").value; let n=0;
     for(let d=1;d<=ld;d++){ const f=start+d-1; if(weekdayOf(f)===dow){ db.plans.push({id:uid(),name,amount:amt,hy:y,hm:m,hd:d,fixed:f,origin:"weekly",dow}); n++; } }
     toast(n+" מופעים נוצרו ✓");
@@ -603,7 +684,9 @@ $("#copyPrev").onclick=()=>{
     const key=p.name+"|"+p.dow+"|"+p.amount; if(seen[key])return; seen[key]=1;
     for(let d=1;d<=ld;d++){ const f=start+d-1; if(weekdayOf(f)===p.dow){ db.plans.push({id:uid(),name:p.name,amount:p.amount,hy:y,hm:m,hd:d,fixed:f,origin:"weekly",dow:p.dow}); added++; } }
   });
-  prev.filter(p=>p.origin!=="weekly").forEach(p=>{ const hd=Math.min(p.hd,ld); const f=start+hd-1; db.plans.push({id:uid(),name:p.name,amount:p.amount,hy:y,hm:m,hd,fixed:f,origin:p.origin,dueDay:p.dueDay}); added++; });
+  prev.filter(p=>p.origin!=="weekly"&&p.origin!=="budget").forEach(p=>{ const hd=Math.min(p.hd,ld); const f=start+hd-1; db.plans.push({id:uid(),name:p.name,amount:p.amount,hy:y,hm:m,hd,fixed:f,origin:p.origin,dueDay:p.dueDay}); added++; });
+  prev.filter(p=>p.origin==="budget").forEach(p=>{ db.plans.push({id:uid(),name:p.name,amount:p.amount,hy:y,hm:m,origin:"budget"}); added++; });
+  const pst=savTargetOf(pv.y,pv.m); if(pst&&!savTargetOf(y,m)){ db.months[hKey(y,m)]=db.months[hKey(y,m)]||{}; db.months[hKey(y,m)].savingsTarget=pst; }
   save();render();toast(added+" תכנונים הועתקו ✓");
 };
 
@@ -625,7 +708,7 @@ $("#resetBtn").onclick=()=>{ if(confirm("לאפס את כל הנתונים? פע
 /* ---- tabs ---- */
 function showTab(t){
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x.dataset.tab===t));
-  ["cal","plan","sum","more"].forEach(s=>$("#tab-"+s).classList.toggle("hide",s!==t));
+  ["cal","plan","sum","sav","more"].forEach(s=>$("#tab-"+s).classList.toggle("hide",s!==t));
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
@@ -695,8 +778,19 @@ $("#syncDisc").onclick=disconnectSync;
 /* ---- PWA ---- */
 if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
 let deferredPrompt=null;
-window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferredPrompt=e; const c=$("#installCard"); if(c) c.style.display=""; });
-$("#installBtn").onclick=async()=>{ if(!deferredPrompt){toast("כבר מותקן / לא זמין");return;} deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; const c=$("#installCard"); if(c) c.style.display="none"; };
+function isStandalone(){ return (window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true; }
+function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent); }
+function refreshInstallUI(){
+  const btn=$("#installBtn"),ios=$("#iosNote"),done=$("#installedNote"); if(!btn) return;
+  if(isStandalone()){ btn.style.display="none";ios.style.display="none";done.style.display="";return; }
+  done.style.display="none";
+  if(deferredPrompt){ btn.style.display="";ios.style.display="none"; }
+  else if(isIOS()){ btn.style.display="none";ios.style.display=""; }
+  else { btn.style.display="none";ios.style.display="none"; }
+}
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferredPrompt=e; refreshInstallUI(); });
+window.addEventListener("appinstalled",()=>{ deferredPrompt=null; refreshInstallUI(); toast("הותקן ✓"); });
+$("#installBtn").onclick=async()=>{ if(!deferredPrompt){ refreshInstallUI(); return; } deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; refreshInstallUI(); };
 
 /* ---- seed on first run ---- */
 if(!db.plans.length && !db.reports.length && !Object.keys(db.months).length){
@@ -707,6 +801,8 @@ if(!db.plans.length && !db.reports.length && !Object.keys(db.months).length){
   save();
 }
 
+$("#savTargetSave").onclick=()=>{ const v=parseFloat($("#savTargetInput").value); const k=hKey(view.y,view.m); db.months[k]=db.months[k]||{}; db.months[k].savingsTarget=isNaN(v)?0:v; save();toast("יעד חיסכון נשמר ✓");render(); };
+refreshInstallUI();
 render();
 renderSyncUI();
 if(ghToken && ghGist){ reconcile(); window.addEventListener("focus",()=>reconcile()); setInterval(()=>{ if(!document.hidden) reconcile(); },60000); }
