@@ -150,6 +150,7 @@
         <div class="stat" id="qActualBox"><div class="k">בפועל עד כה</div><div class="v" id="qActual">—</div></div>
         <div class="stat"><div class="k">הפרש</div><div class="v" id="qDiff">—</div></div>
       </div>
+      <div id="qIncomeLine" style="margin-top:12px;font-size:13px;font-weight:700;text-align:center"></div>
     </div>
     <div class="card">
       <h2>📈 התקדמות מול היעד</h2>
@@ -228,6 +229,10 @@
     <div class="card">
       <h2>🧾 הוצאות ללא תכנון</h2>
       <div id="sumNoPlan"></div>
+    </div>
+    <div class="card">
+      <h2>💰 הכנסות ומאזן</h2>
+      <div id="sumIncome"></div>
     </div>
   </section>
 
@@ -337,7 +342,7 @@ let db=load();
 let view=(function(){const t=hebToday();return {y:t.year,m:t.month};})();
 let modalFixed=null;
 
-function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r){r.plans=r.plans||[];r.reports=r.reports||[];r.months=r.months||{};return r;}}catch(e){}return {months:{},plans:[],reports:[]};}
+function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r){r.plans=r.plans||[];r.reports=r.reports||[];r.months=r.months||{};r.plans.forEach(p=>{if(!p.flow)p.flow="out";});r.reports.forEach(x=>{if(!x.flow)x.flow="out";});return r;}}catch(e){}return {months:{},plans:[],reports:[]};}
 function save(){db.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(db));if(typeof queueSync==="function")queueSync();}
 function uid(){return Math.random().toString(36).slice(2,9);}
 function hKey(y,m){return "H"+y+"-"+m;}
@@ -352,8 +357,11 @@ function reportsInMonth(y,m){return db.reports.filter(r=>r.hy===y&&r.hm===m);}
 function sum(arr){return arr.reduce((a,x)=>a+(+x.amount||0),0);}
 function actualForPlan(planId){return sum(db.reports.filter(r=>r.planId===planId));}
 const SAV="SAVINGS";
-function datedPlans(y,m){return db.plans.filter(p=>p.hy===y&&p.hm===m&&p.origin!=="budget");}
-function budgets(y,m){return db.plans.filter(p=>p.hy===y&&p.hm===m&&p.origin==="budget");}
+function datedPlans(y,m){return db.plans.filter(p=>p.hy===y&&p.hm===m&&p.origin!=="budget"&&p.flow!=="in");}
+function budgets(y,m){return db.plans.filter(p=>p.hy===y&&p.hm===m&&p.origin==="budget"&&p.flow!=="in");}
+function incPlans(y,m){return db.plans.filter(p=>p.hy===y&&p.hm===m&&p.flow==="in");}
+function expReports(y,m){return db.reports.filter(r=>r.hy===y&&r.hm===m&&r.flow!=="in");}
+function incReports(y,m){return db.reports.filter(r=>r.hy===y&&r.hm===m&&r.flow==="in");}
 function savTargetOf(y,m){const v=db.months[hKey(y,m)];return (v&&v.savingsTarget)?+v.savingsTarget:0;}
 function savingsAll(){return db.reports.filter(r=>r.planId===SAV);}
 function categories(y,m){
@@ -365,19 +373,45 @@ function categories(y,m){
   if(st>0||sa>0)cats.push({name:"חיסכון לבית",planned:st,actual:sa,kind:"savings"});
   return cats;
 }
-function linkOptionsHTML(f,sel){
-  const hh=hebrewFromFixed(f),dayPlans=plansOn(f),buds=budgets(hh.year,hh.month);
+function linkOptionsHTML(f,sel,flow){
+  const hh=hebrewFromFixed(f);
+  function opt(p){return '<option value="'+p.id+'"'+(sel===p.id?" selected":"")+'>'+esc(p.name)+' ('+money(p.amount)+')</option>';}
+  function optD(p){return '<option value="'+p.id+'"'+(sel===p.id?" selected":"")+'>'+esc(p.name)+' — '+heDay(p.hd)+' ('+money(p.amount)+')</option>';}
   let o='<option value=""'+(!sel?" selected":"")+'>ללא תכנון</option>';
-  if(dayPlans.length){o+='<optgroup label="תכנון היום">';dayPlans.forEach(p=>o+='<option value="'+p.id+'"'+(sel===p.id?" selected":"")+'>'+esc(p.name)+' ('+money(p.amount)+')</option>');o+='</optgroup>';}
+  if(flow==="in"){
+    const dayP=plansOn(f).filter(p=>p.flow==="in"), others=incPlans(hh.year,hh.month).filter(p=>p.fixed!==f);
+    if(dayP.length){o+='<optgroup label="תכנון היום">';dayP.forEach(p=>o+=opt(p));o+='</optgroup>';}
+    if(others.length){o+='<optgroup label="תכנונים אחרים החודש">';others.forEach(p=>o+=optD(p));o+='</optgroup>';}
+    return o;
+  }
+  const dayP=plansOn(f).filter(p=>p.flow!=="in"), others=datedPlans(hh.year,hh.month).filter(p=>p.fixed!==f), buds=budgets(hh.year,hh.month);
+  if(dayP.length){o+='<optgroup label="תכנון היום">';dayP.forEach(p=>o+=opt(p));o+='</optgroup>';}
+  if(others.length){o+='<optgroup label="תכנונים אחרים החודש">';others.forEach(p=>o+=optD(p));o+='</optgroup>';}
   o+='<optgroup label="תקציבים חודשיים">';
-  buds.forEach(b=>o+='<option value="'+b.id+'"'+(sel===b.id?" selected":"")+'>'+esc(b.name)+' ('+money(b.amount)+')</option>');
+  buds.forEach(b=>o+=opt(b));
   o+='<option value="'+SAV+'"'+(sel===SAV?" selected":"")+'>חיסכון לבית</option></optgroup>';
   return o;
+}
+function rowsHTML(items,kind){
+  if(!items.length) return '<div class="empty">—</div>';
+  let s="";
+  items.forEach(x=>{
+    if(kind==="plan") s+='<div class="rowline"><div><div class="nm">'+esc(x.name)+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt">'+money(x.amount)+'</span><button class="btn sm soft" data-editplan="'+x.id+'">✎</button></div></div>';
+    else{const ll=linkLabelFor(x);s+='<div class="rowline"><div><div class="nm">'+esc(x.name)+'</div><div class="sub">'+esc(ll.label)+esc(ll.extra)+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt">'+money(x.amount)+'</span><button class="btn sm soft" data-editrep="'+x.id+'">✎</button></div></div>';}
+  });
+  return s;
 }
 function linkLabelFor(r){
   if(r.planId===SAV){const t=savTargetOf(r.hy,r.hm);let ex="";if(t){const u=sum(reportsInMonth(r.hy,r.hm).filter(x=>x.planId===SAV));ex=" · נותר החודש "+money(t-u);}return {label:"חיסכון לבית",extra:ex};}
   if(r.planId){const p=db.plans.find(x=>x.id===r.planId);if(p){let ex="";if(p.origin==="budget"){const u=sum(reportsInMonth(r.hy,r.hm).filter(x=>x.planId===p.id));ex=" · נותר "+money(p.amount-u);}return {label:"↳ "+p.name,extra:ex};}}
   return {label:"ללא תכנון",extra:""};
+}
+function renderIncome(){
+  const box=$("#sumIncome"); if(!box) return;
+  const pI=sum(incPlans(view.y,view.m)), aI=sum(incReports(view.y,view.m)), aE=sum(expReports(view.y,view.m)), net=aI-aE;
+  box.innerHTML='<div class="listitem"><span class="nm">הכנסה מתוכננת</span><span class="amt">'+money(pI)+'</span></div>'+
+    '<div class="listitem"><span class="nm">הכנסה בפועל</span><span class="amt">'+money(aI)+'</span></div>'+
+    '<div class="listitem" style="border-top:2px solid var(--line)"><span class="nm">מאזן (הכנסות − הוצאות)</span><span class="amt '+(net<0?"over":"under")+'">'+(net<0?"-":"")+money(Math.abs(net))+'</span></div>';
 }
 function renderSavings(){
   const all=savingsAll(),total=sum(all),goal=50000,pct=Math.min(Math.round(total/goal*100),100);
@@ -405,6 +439,7 @@ function render(){
   renderSummary();
   renderProgress();
   renderSavings();
+  renderIncome();
 }
 
 function renderCalendar(){
@@ -431,8 +466,8 @@ function renderCalendar(){
 }
 
 function renderQuick(){
-  const plans=plansInMonth(view.y,view.m), reps=reportsInMonth(view.y,view.m);
-  const planned=sum(plans), actual=sum(reps);
+  const plans=datedPlans(view.y,view.m), reps=expReports(view.y,view.m);
+  const planned=categories(view.y,view.m).reduce((a,c)=>a+c.planned,0), actual=sum(reps);
   $("#qPlanned").textContent=money(planned);
   $("#qActual").textContent=money(actual);
   const diff=planned-actual;
@@ -442,6 +477,8 @@ function renderQuick(){
   const plannedToDate=sum(plans.filter(p=>p.fixed<=tf));
   const actualToDate=sum(reps.filter(r=>r.fixed<=tf));
   if(plannedToDate>0||actualToDate>0) box.classList.add(actualToDate>plannedToDate?"bad":"good");
+  const aI=sum(incReports(view.y,view.m)), net=aI-actual;
+  const il=$("#qIncomeLine"); if(il) il.innerHTML='הכנסה בפועל: <b style="color:var(--good)">'+money(aI)+'</b> · מאזן: <b style="color:'+(net<0?"var(--bad)":"var(--good)")+'">'+(net<0?"-":"")+money(Math.abs(net))+'</b>';
 }
 
 /* ---- date selects for move/edit ---- */
@@ -464,51 +501,54 @@ function readDateSelects(idp){
 function closeModal(){modalFixed=null;$("#modalRoot").innerHTML="";}
 function openDay(f){modalFixed=f;renderDayCard();}
 function renderDayCard(){
-  const f=modalFixed;const {year:hy,month:hm,day:hd}=hebrewFromFixed(f);const g=gregFromFixed(f);
-  const plans=plansOn(f), reps=reportsOn(f);
-  let ph="";
-  if(!plans.length) ph='<div class="empty">אין תכנון ליום זה</div>';
-  else plans.forEach(p=>{ph+='<div class="rowline"><div><div class="nm">'+esc(p.name)+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt">'+money(p.amount)+'</span><button class="btn sm soft" data-editplan="'+p.id+'">✎</button></div></div>';});
-  let rh="";
-  if(!reps.length) rh='<div class="empty">לא דווחו הוצאות ליום זה</div>';
-  else reps.forEach(r=>{const ll=linkLabelFor(r);rh+='<div class="rowline"><div><div class="nm">'+esc(r.name)+'</div><div class="sub">'+esc(ll.label)+esc(ll.extra)+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt">'+money(r.amount)+'</span><button class="btn sm soft" data-editrep="'+r.id+'">✎</button></div></div>';});
+  const f=modalFixed;const H=hebrewFromFixed(f);const hy=H.year,hm=H.month,hd=H.day;const g=gregFromFixed(f);
+  const eP=plansOn(f).filter(p=>p.flow!=="in"), eR=reportsOn(f).filter(r=>r.flow!=="in");
+  const iP=plansOn(f).filter(p=>p.flow==="in"), iR=reportsOn(f).filter(r=>r.flow==="in");
   const html='<div class="modal"><div class="sheet">'+
     '<div class="mhead"><span class="mt">יום '+DAYS[weekdayOf(f)]+' · '+heDay(hd)+' '+hebMonthName(hy,hm)+' '+heYear(hy)+'<br><span class="muted" style="font-size:12px;font-weight:600">'+g.day+'/'+g.month+'/'+g.year+'</span></span><button class="mc" id="mClose">✕</button></div>'+
-    '<div class="sec-h">מתוכנן ליום זה</div>'+ph+
-    '<div class="sec-h">דווח בפועל</div>'+rh+
-    '<div class="row" style="margin-top:16px"><button class="btn ghost" id="btnPlanDay">＋ תכנון הוצאה ליום זה</button><button class="btn" id="btnReportDay">＋ דיווח על הוצאה</button></div>'+
+    '<div class="sec-h">💸 הוצאות מתוכננות</div>'+rowsHTML(eP,"plan")+
+    '<div class="sec-h">הוצאות שדווחו</div>'+rowsHTML(eR,"rep")+
+    '<div class="row" style="margin-top:10px"><button class="btn ghost sm" id="btnPlanExp">＋ תכנון הוצאה</button><button class="btn sm" id="btnRepExp">＋ דיווח הוצאה</button></div>'+
+    '<hr style="border:none;border-top:1px solid var(--line);margin:16px 0">'+
+    '<div class="sec-h">💰 הכנסות מתוכננות</div>'+rowsHTML(iP,"plan")+
+    '<div class="sec-h">הכנסות שדווחו</div>'+rowsHTML(iR,"rep")+
+    '<div class="row" style="margin-top:10px"><button class="btn ghost sm" id="btnPlanInc">＋ תכנון הכנסה</button><button class="btn sm" id="btnRepInc">＋ דיווח הכנסה</button></div>'+
     '<div id="dayForm"></div>'+
     '</div></div>';
   $("#modalRoot").innerHTML=html;
   $("#mClose").onclick=closeModal;
   $(".modal").onclick=(e)=>{if(e.target.classList.contains("modal"))closeModal();};
-  $("#btnPlanDay").onclick=()=>dayPlanForm();
-  $("#btnReportDay").onclick=()=>dayReportForm();
+  $("#btnPlanExp").onclick=()=>dayPlanForm("out");
+  $("#btnRepExp").onclick=()=>dayReportForm("out");
+  $("#btnPlanInc").onclick=()=>dayPlanForm("in");
+  $("#btnRepInc").onclick=()=>dayReportForm("in");
   document.querySelectorAll("[data-editplan]").forEach(b=>b.onclick=()=>editPlan(b.getAttribute("data-editplan")));
   document.querySelectorAll("[data-editrep]").forEach(b=>b.onclick=()=>editReport(b.getAttribute("data-editrep")));
 }
 
 /* ---- day card: add forms ---- */
-function dayPlanForm(){
-  $("#dayForm").innerHTML='<div class="miniform"><div class="sec-h" style="margin-top:0">תכנון הוצאה ליום זה</div><div class="g2"><div><label class="fld">תיאור</label><input id="dpName" placeholder="תיאור"></div><div><label class="fld">סכום (₪)</label><input id="dpAmt" type="number" inputmode="decimal" placeholder="0"></div></div><button class="btn block" id="dpSave">שמור תכנון</button></div>';
+function dayPlanForm(flow){
+  const isInc=flow==="in";
+  $("#dayForm").innerHTML='<div class="miniform"><div class="sec-h" style="margin-top:0">'+(isInc?"תכנון הכנסה ליום זה":"תכנון הוצאה ליום זה")+'</div><div class="g2"><div><label class="fld">תיאור</label><input id="dpName" placeholder="תיאור"></div><div><label class="fld">סכום (₪)</label><input id="dpAmt" type="number" inputmode="decimal" placeholder="0"></div></div><button class="btn block" id="dpSave">שמור</button></div>';
   $("#dpName").focus();
   $("#dpSave").onclick=()=>{
     const name=$("#dpName").value.trim(), amt=parseFloat($("#dpAmt").value);
     if(!name){toast("הזן תיאור");return;} if(isNaN(amt)){toast("הזן סכום");return;}
     const h=hebrewFromFixed(modalFixed);
-    db.plans.push({id:uid(),name,amount:amt,hy:h.year,hm:h.month,hd:h.day,fixed:modalFixed,origin:"day"});
+    db.plans.push({id:uid(),name,amount:amt,hy:h.year,hm:h.month,hd:h.day,fixed:modalFixed,origin:"day",flow:isInc?"in":"out"});
     save();toast("נוסף ✓");render();renderDayCard();
   };
 }
-function dayReportForm(){
-  let opt=linkOptionsHTML(modalFixed,"");
-  $("#dayForm").innerHTML='<div class="miniform"><div class="sec-h" style="margin-top:0">דיווח על הוצאה</div><div class="g2"><div><label class="fld">תיאור</label><input id="drName" placeholder="תיאור"></div><div><label class="fld">סכום (₪)</label><input id="drAmt" type="number" inputmode="decimal" placeholder="0"></div></div><label class="fld">שייך לתכנון</label><select id="drLink">'+opt+'</select><button class="btn block" id="drSave">שמור דיווח</button></div>';
+function dayReportForm(flow){
+  const isInc=flow==="in";
+  let opt=linkOptionsHTML(modalFixed,"",isInc?"in":"out");
+  $("#dayForm").innerHTML='<div class="miniform"><div class="sec-h" style="margin-top:0">'+(isInc?"דיווח הכנסה":"דיווח הוצאה")+'</div><div class="g2"><div><label class="fld">תיאור</label><input id="drName" placeholder="תיאור"></div><div><label class="fld">סכום (₪)</label><input id="drAmt" type="number" inputmode="decimal" placeholder="0"></div></div><label class="fld">שייך לתכנון</label><select id="drLink">'+opt+'</select><button class="btn block" id="drSave">שמור</button></div>';
   $("#drLink").onchange=()=>{const p=db.plans.find(x=>x.id===$("#drLink").value);if(p){if(!$("#drName").value)$("#drName").value=p.name;if(!$("#drAmt").value)$("#drAmt").value=p.amount;}};
   $("#drSave").onclick=()=>{
     const name=$("#drName").value.trim(), amt=parseFloat($("#drAmt").value);
     if(!name){toast("הזן תיאור");return;} if(isNaN(amt)){toast("הזן סכום");return;}
     const h=hebrewFromFixed(modalFixed);
-    db.reports.push({id:uid(),name,amount:amt,hy:h.year,hm:h.month,hd:h.day,fixed:modalFixed,planId:$("#drLink").value||null});
+    db.reports.push({id:uid(),name,amount:amt,hy:h.year,hm:h.month,hd:h.day,fixed:modalFixed,planId:$("#drLink").value||null,flow:isInc?"in":"out"});
     save();toast("דווח ✓");render();renderDayCard();
   };
 }
@@ -540,7 +580,7 @@ function editPlan(id){
 function editReport(id){
   const r=db.reports.find(x=>x.id===id); if(!r) return;
   const fromDay=modalFixed;
-  let opt=linkOptionsHTML(r.fixed,r.planId);
+  let opt=linkOptionsHTML(r.fixed,r.planId,r.flow||"out");
   const html='<div class="modal"><div class="sheet"><div class="mhead"><span class="mt">עריכת דיווח</span><button class="mc" id="mClose">✕</button></div>'+
     '<div class="miniform"><div class="g2"><div><label class="fld">תיאור</label><input id="erName" value="'+esc(r.name)+'"></div><div><label class="fld">סכום (₪)</label><input id="erAmt" type="number" inputmode="decimal" value="'+(+r.amount)+'"></div></div>'+
     '<label class="fld">שייך לתכנון</label><select id="erLink">'+opt+'</select>'+
@@ -567,7 +607,8 @@ function renderPlanning(){
   const si=$("#savTargetInput"); if(si){const stv=savTargetOf(view.y,view.m);si.value=stv||"";}
   const plans=plansInMonth(view.y,view.m);
   const box=$("#planList");
-  if(!plans.length){ box.innerHTML='<div class="empty">אין תכנונים החודש. הוסף למעלה, או "העתק מחודש קודם".</div>'; }
+  const st=savTargetOf(view.y,view.m);
+  if(!plans.length && !st){ box.innerHTML='<div class="empty">אין תכנונים החודש. הוסף למעלה, או "העתק מחודש קודם".</div>'; }
   else{
     const labels={weekly:"שבועי",monthly:"חודשי",onetime:"חד-פעמי",day:"מהלוח",budget:"תקציבים חודשיים"};
     box.innerHTML="";
@@ -582,9 +623,10 @@ function renderPlanning(){
         box.appendChild(el);
       });
     });
+    if(st>0){ const sh=document.createElement("div"); sh.className="sec-h"; sh.textContent="חיסכון"; box.appendChild(sh); const se=document.createElement("div"); se.className="listitem"; se.innerHTML='<div><div class="nm">חיסכון לבית (יעד)</div><div class="sub">יעד חודשי</div></div><span class="amt">'+money(st)+'</span>'; box.appendChild(se); }
     box.querySelectorAll("[data-ep]").forEach(b=>b.onclick=()=>editPlan(b.getAttribute("data-ep")));
   }
-  $("#planTotal").textContent=money(sum(plans));
+  $("#planTotal").textContent=money(sum(plans)+st);
 }
 
 /* ---- progress ---- */
@@ -594,7 +636,7 @@ function planGroups(y,m){
   Object.values(map).forEach(g=>{ g.actual=sum(db.reports.filter(r=>g.ids.indexOf(r.planId)>=0)); });
   return Object.values(map);
 }
-function noPlanReports(y,m){ return reportsInMonth(y,m).filter(r=>!r.planId); }
+function noPlanReports(y,m){ return expReports(y,m).filter(r=>!r.planId); }
 function renderProgress(){
   const box=$("#progressList");
   const groups=categories(view.y,view.m).filter(g=>g.planned>0);
@@ -625,7 +667,7 @@ function renderSummary(){
       let plannedCell=g.planned>0?money(g.planned):"—",diffCell="—",pctCell="—",cls="";
       if(g.planned>0){const diff=g.planned-g.actual;cls=over?"g-bad":"g-good";diffCell=(diff<0?"-":"")+money(Math.abs(diff));pctCell=Math.round(g.actual/g.planned*100)+"%";}
       rows+='<tr><td>'+esc(g.name)+'</td><td class="num">'+plannedCell+'</td><td class="num">'+money(g.actual)+'</td><td class="num '+cls+'">'+diffCell+'</td><td class="num '+cls+'">'+pctCell+'</td></tr>'; });
-    const taAll=sum(reportsInMonth(view.y,view.m)),tdiff=tp-taAll;
+    const taAll=sum(expReports(view.y,view.m)),tdiff=tp-taAll;
     wrap.innerHTML='<table class="tbl"><thead><tr><th>הוצאה</th><th>מתוכנן</th><th>בפועל</th><th>הפרש</th><th>ניצול</th></tr></thead><tbody>'+rows+
       '<tr class="tot"><td>סה״כ</td><td class="num">'+money(tp)+'</td><td class="num">'+money(taAll)+'</td><td class="num '+(tdiff<0?"g-bad":"g-good")+'">'+(tdiff<0?"-":"")+money(Math.abs(tdiff))+'</td><td class="num">'+(tp>0?Math.round(taAll/tp*100):0)+'%</td></tr></tbody></table>';
   }
