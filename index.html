@@ -2,8 +2,14 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>יעדים כלכליים</title>
+<meta name="theme-color" content="#3b5bdb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="יעדים">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   :root{
     color-scheme: light;
@@ -79,6 +85,9 @@
   .toast.show{opacity:1}
   .dayname{font-size:12px;color:var(--brand);font-weight:700}
   .greg{opacity:.7}
+  .syncbar{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-bottom:12px;cursor:pointer}
+  .syncbar.ok{color:var(--good)} .syncbar.err{color:var(--bad)} .syncbar.busy{color:var(--brand)}
+  .fld-btn-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
   .cal .dow{text-align:center;font-size:12px;font-weight:800;color:var(--muted);padding:2px 0}
   .cal .cell{min-height:78px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:4px;display:flex;flex-direction:column;gap:3px;overflow:hidden}
@@ -115,7 +124,8 @@
     </div>
   </div>
 
-  <!-- ===== CALENDAR ===== -->
+  <div class="syncbar" id="syncBar" onclick="showSyncTab()">⚪ סנכרון כבוי — לחץ להגדרה</div>
+
   <section id="tab-cal">
     <div class="card">
       <h2>📅 לוח החודש</h2>
@@ -139,13 +149,11 @@
     </div>
   </section>
 
-  <!-- ===== HOME ===== -->
   <section id="tab-home" class="hide">
     <div class="card" id="promptsCard">
       <h2>🔔 ממתין להזנה</h2>
       <div id="promptsList"></div>
     </div>
-
     <div class="card">
       <h2>📊 מצב החודש</h2>
       <div class="grid3">
@@ -169,12 +177,10 @@
         <div class="row" style="align-items:center;gap:8px"><span class="v amt" id="sProjected" style="font-size:16px">—</span><span class="muted">מתוך הכנסה של</span><span id="sProjIncome">—</span></div>
       </div>
     </div>
-
     <div class="card">
       <h2>🗂️ לפי קטגוריה</h2>
       <div id="catBreakdown"></div>
     </div>
-
     <div class="card">
       <h2>➕ הוצאה חד-פעמית</h2>
       <div class="muted" style="font-size:13px;margin-bottom:8px">הוצאה שלא בתוכנית — נספרת ב"בפועל" של החודש.</div>
@@ -188,7 +194,6 @@
     </div>
   </section>
 
-  <!-- ===== MONTH / INCOME ===== -->
   <section id="tab-month" class="hide">
     <div class="card">
       <h2>💵 הכנסה לחודש <span id="incMonthLbl" class="muted" style="font-weight:600"></span></h2>
@@ -208,7 +213,6 @@
     </div>
   </section>
 
-  <!-- ===== RECURRING ===== -->
   <section id="tab-plan" class="hide">
     <div class="card">
       <h2>🔁 הוצאות שבועיות קבועות</h2>
@@ -232,7 +236,6 @@
         </div>
       </div>
     </div>
-
     <div class="card">
       <h2>📅 הוצאות חודשיות קבועות</h2>
       <div class="muted" style="font-size:13px;margin-bottom:10px">למשל: שכר דירה, מנוי, ביטוח — פעם בחודש עברי בתאריך קבוע.</div>
@@ -253,7 +256,6 @@
     </div>
   </section>
 
-  <!-- ===== HISTORY ===== -->
   <section id="tab-hist" class="hide">
     <div class="card">
       <h2>🧾 היסטוריית החודש</h2>
@@ -261,8 +263,27 @@
     </div>
   </section>
 
-  <!-- ===== BACKUP ===== -->
   <section id="tab-more" class="hide">
+    <div class="card">
+      <h2>☁️ סנכרון בין מכשירים</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:10px">מדביקים כאן טוקן GitHub (עם הרשאת <b>gist</b> בלבד). אותו טוקן במחשב ובטלפון → אותם נתונים מסונכרנים. הנתונים נשמרים ב-Gist פרטי שרק אתה רואה.</div>
+      <label class="fld">טוקן GitHub</label>
+      <div class="fld-btn-row">
+        <input id="ghTokenInput" type="password" placeholder="ghp_..." style="max-width:260px" autocomplete="off">
+        <button class="btn" id="ghConnect">חבר</button>
+      </div>
+      <div class="fld-btn-row" style="margin-top:12px">
+        <button class="btn ghost" id="ghSyncNow">🔄 סנכרן עכשיו</button>
+        <button class="btn soft" id="syncDisc" style="display:none">נתק</button>
+        <span class="muted" style="font-size:13px">מצב: <b id="syncStatus">כבוי</b></span>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:10px">טיפ: אם ערכת בשני מכשירים ללא רשת — השינוי האחרון שנשמר מנצח.</div>
+    </div>
+    <div class="card" id="installCard" style="display:none">
+      <h2>📲 התקנה כאפליקציה</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:10px">אפשר להתקין את האפליקציה על המסך הראשי (בלי חנות אפליקציות).</div>
+      <button class="btn" id="installBtn">התקן</button>
+    </div>
     <div class="card">
       <h2>💾 גיבוי ושחזור</h2>
       <div class="muted" style="font-size:13px;margin-bottom:12px">הנתונים נשמרים במכשיר. מומלץ לייצא גיבוי מדי פעם.</div>
@@ -292,14 +313,13 @@
 </div></nav>
 
 <div class="toast" id="toast"></div>
-
 <script>
 "use strict";
 const KEY = "budgetApp_heb_v1";
 const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 const $ = s => document.querySelector(s);
 
-/* ================= Hebrew calendar engine (Dershowitz–Reingold) ================= */
+/* Hebrew calendar engine (Dershowitz-Reingold) */
 function gLeap(y){ return (y%4===0)&&(y%100!==0||y%400===0); }
 function fixedFromGreg(y,m,d){
   return 365*(y-1)+Math.floor((y-1)/4)-Math.floor((y-1)/100)+Math.floor((y-1)/400)
@@ -373,7 +393,6 @@ function weekdayOf(f){ return ((f%7)+7)%7; }
 function todayFixed(){ const d=new Date(); return fixedFromGreg(d.getFullYear(),d.getMonth()+1,d.getDate()); }
 function hebToday(){ return hebrewFromFixed(todayFixed()); }
 
-/* month names + gematria */
 function hebMonthName(y,m){
   const base={1:"ניסן",2:"אייר",3:"סיון",4:"תמוז",5:"אב",6:"אלול",7:"תשרי",8:"חשון",9:"כסלו",10:"טבת",11:"שבט",12:"אדר",13:"אדר ב׳"};
   if(hLeap(y)){ if(m===12) return "אדר א׳"; if(m===13) return "אדר ב׳"; }
@@ -397,7 +416,6 @@ function gPunct(str){
 function heDay(n){ return gPunct(gematria(n)); }
 function heYear(y){ return gPunct(gematria(y%1000)); }
 function monthLabel(y,m){ return hebMonthName(y,m)+" "+heYear(y); }
-// order of hebrew months within a civil year: 7..last,1..6
 function nextHMonth(y,m){
   const last=lastMonthOfHYear(y);
   if(m===6) return {y:y+1,m:7};
@@ -411,7 +429,6 @@ function prevHMonth(y,m){
   return {y:y,m:m-1};
 }
 
-/* ================= state ================= */
 let db = load();
 let view = (function(){ const t=hebToday(); return {y:t.year, m:t.month}; })();
 
@@ -419,13 +436,12 @@ function load(){
   try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r) return r; }catch(e){}
   return { months:{}, weekly:[], monthly:[], entries:{} };
 }
-function save(){ localStorage.setItem(KEY, JSON.stringify(db)); }
+function save(){ db.updatedAt=Date.now(); localStorage.setItem(KEY, JSON.stringify(db)); if(typeof queueSync==="function") queueSync(); }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function hKey(y,m){ return "H"+y+"-"+m; }
 function money(n){ return "₪" + Math.round(+n||0).toLocaleString("he-IL"); }
 function gregShort(f){ const g=gregFromFixed(f); return String(g.day).padStart(2,"0")+"/"+String(g.month).padStart(2,"0"); }
 
-/* ================= occurrences for viewed hebrew month ================= */
 function occurrences(){
   const y=view.y, m=view.m;
   const ld=lastDayOfHMonth(y,m);
@@ -453,7 +469,6 @@ function extraEntries(){
     .map(([k,v])=>({ oid:k, ...v }));
 }
 
-/* ================= computations ================= */
 function computeMonth(){
   const occ=occurrences();
   const tf=todayFixed();
@@ -467,7 +482,6 @@ function computeMonth(){
       actual+=+e.actual; projected+=+e.actual;
       if(o.fixed<=tf) actualToDate+=+e.actual;
     } else if(e && e.status==="skipped"){
-      /* 0 */
     } else {
       projected+=o.target;
       if(o.fixed<=tf) pending.push(o);
@@ -478,7 +492,6 @@ function computeMonth(){
   return { occ, income, planned, actual, projected, plannedToDate, actualToDate, remaining:income-actual, pending };
 }
 
-/* ================= rendering ================= */
 function render(){
   $("#mLabel").textContent = monthLabel(view.y, view.m);
   renderCalendar();
@@ -545,7 +558,6 @@ function renderCalendar(){
     });
     grid.appendChild(cell);
   }
-  // quick summary
   const c=computeMonth();
   $("#cIncome").textContent=c.income? money(c.income):"—";
   $("#cPlanned").textContent=money(c.planned);
@@ -572,4 +584,321 @@ function renderPrompts(){
     el.innerHTML=
       '<div class="head"><span class="nm">'+esc(o.name)+'</span><span class="dt">'+dateLabel(o)+'<br><span class="greg">'+gregShort(o.fixed)+'</span></span></div>'+
       '<div class="tgt">יעד: '+money(o.target)+' — כמה הוצאת בפועל?</div>'+
-      '<div class="inrow" style="margin-top:8px"><input type="number" inputmode="decimal" placeholder="'+(o.target||0)+'"><button class="btn 
+      '<div class="inrow" style="margin-top:8px"><input type="number" inputmode="decimal" placeholder="'+(o.target||0)+'"><button class="btn sm">שמור</button><button class="btn sm soft">דלג</button></div>';
+    const inp=el.querySelector("input");
+    const btns=el.querySelectorAll("button");
+    btns[0].onclick=()=>{
+      const val=parseFloat(inp.value);
+      if(isNaN(val)){ toast("הזן סכום"); inp.focus(); return; }
+      db.entries[o.oid]={ type:o.type, refId:o.refId, name:o.name, target:o.target, fixed:o.fixed, hy:view.y, hm:view.m, hd:o.hd, actual:val, status:"done" };
+      save(); toast("נשמר ✓"); render();
+    };
+    inp.addEventListener("keydown",e=>{ if(e.key==="Enter") btns[0].click(); });
+    btns[1].onclick=()=>{
+      db.entries[o.oid]={ type:o.type, refId:o.refId, name:o.name, target:o.target, fixed:o.fixed, hy:view.y, hm:view.m, hd:o.hd, actual:0, status:"skipped" };
+      save(); toast("דולג"); render();
+    };
+    box.appendChild(el);
+  });
+}
+
+function renderDashboard(){
+  const c=computeMonth();
+  $("#sIncome").textContent=c.income? money(c.income):"—";
+  $("#sPlanned").textContent=money(c.planned);
+  $("#sActual").textContent=money(c.actual);
+  const pct=c.planned>0?Math.round(c.actual/c.planned*100):0;
+  $("#usePct").textContent=c.planned>0?pct+"% מהיעד":"—";
+  const bar=$("#useBar"); bar.querySelector("span").style.width=Math.min(pct,100)+"%";
+  bar.classList.toggle("over", c.actual>c.planned && c.planned>0);
+  const rem=$("#sRemain");
+  rem.textContent=c.income? money(c.remaining):"—";
+  rem.className="v amt "+(c.remaining<0?"over":"under");
+  const ab=$("#sActualBox"); ab.className="stat";
+  if(c.plannedToDate>0){ ab.classList.add(c.actualToDate>c.plannedToDate?"bad":"good"); }
+  const pill=$("#statusPill");
+  if(!c.income){ pill.innerHTML='<span class="pill warn">הגדר הכנסה</span>'; }
+  else if(c.projected>c.income){ pill.innerHTML='<span class="pill bad">חריגה צפויה: '+money(c.projected-c.income)+'</span>'; }
+  else { pill.innerHTML='<span class="pill good">במסלול · חיסכון צפוי '+money(c.income-c.projected)+'</span>'; }
+  $("#sProjected").textContent=money(c.projected);
+  $("#sProjIncome").textContent=c.income? money(c.income):"—";
+  $("#sProjected").className="v amt "+((c.income&&c.projected>c.income)?"over":"under");
+}
+
+function renderCats(){
+  const c=computeMonth();
+  const box=$("#catBreakdown");
+  const map={};
+  c.occ.forEach(o=>{
+    const e=db.entries[o.oid];
+    const act=(e&&e.status!=="skipped")?+e.actual:0;
+    if(!map[o.name]) map[o.name]={target:0,actual:0};
+    map[o.name].target+=o.target; map[o.name].actual+=act;
+  });
+  extraEntries().forEach(x=>{
+    const n="חד-פעמי: "+x.name;
+    if(!map[n]) map[n]={target:0,actual:0};
+    map[n].actual+=+x.actual;
+  });
+  const keys=Object.keys(map);
+  if(!keys.length){ box.innerHTML='<div class="empty">אין עדיין הוצאות מתוכננות. הוסף תחת "תכנון".</div>'; return; }
+  box.innerHTML="";
+  keys.forEach(n=>{
+    const t=map[n].target, a=map[n].actual;
+    const pct=t>0?Math.round(a/t*100):(a>0?100:0);
+    const over=t>0&&a>t;
+    const row=document.createElement("div"); row.className="catrow";
+    row.innerHTML='<div class="lab">'+esc(n)+'</div>'+
+      '<div class="barwrap"><div class="bar '+(over?'over':'')+'"><span style="width:'+Math.min(pct,100)+'%"></span></div></div>'+
+      '<div class="nums">'+money(a)+(t>0?" / "+money(t):"")+'</div>';
+    box.appendChild(row);
+  });
+}
+
+function renderMonthTab(){
+  const c=computeMonth();
+  $("#incMonthLbl").textContent="("+monthLabel(view.y,view.m)+")";
+  $("#incInput").value=db.months[hKey(view.y,view.m)]?.income ?? "";
+  let weekly=0, monthly=0;
+  c.occ.forEach(o=>{ if(o.type==="weekly") weekly+=o.target; else monthly+=o.target; });
+  $("#pmIncome").textContent=money(c.income);
+  $("#pmWeekly").textContent=money(weekly);
+  $("#pmMonthly").textContent=money(monthly);
+  const sv=c.income-weekly-monthly;
+  const s=$("#pmSave"); s.textContent=money(sv); s.className="amt "+(sv<0?"over":"under");
+}
+
+function renderPlan(){
+  const wl=$("#weeklyList");
+  if(!db.weekly.length){ wl.innerHTML='<div class="empty">אין הוצאות שבועיות עדיין.</div>'; }
+  else{
+    wl.innerHTML="";
+    db.weekly.forEach(w=>{
+      const el=document.createElement("div"); el.className="listitem";
+      el.innerHTML='<div><div class="nm">'+esc(w.name)+'</div><div class="sub"><span class="dayname">כל יום '+DAYS[w.dayOfWeek]+'</span> · יעד '+money(w.target)+'</div></div><div class="miniright"><button class="btn sm danger">מחק</button></div>';
+      el.querySelector("button").onclick=()=>{ db.weekly=db.weekly.filter(x=>x.id!==w.id); save(); render(); toast("נמחק"); };
+      wl.appendChild(el);
+    });
+  }
+  const ml=$("#monthlyList");
+  if(!db.monthly.length){ ml.innerHTML='<div class="empty">אין הוצאות חודשיות עדיין.</div>'; }
+  else{
+    ml.innerHTML="";
+    db.monthly.forEach(mo=>{
+      const el=document.createElement("div"); el.className="listitem";
+      el.innerHTML='<div><div class="nm">'+esc(mo.name)+'</div><div class="sub">כל '+heDay(mo.dueDay)+' בחודש · יעד '+money(mo.target)+'</div></div><div class="miniright"><button class="btn sm danger">מחק</button></div>';
+      el.querySelector("button").onclick=()=>{ db.monthly=db.monthly.filter(x=>x.id!==mo.id); save(); render(); toast("נמחק"); };
+      ml.appendChild(el);
+    });
+  }
+}
+
+function renderHist(){
+  const c=computeMonth();
+  const box=$("#histList");
+  const rows=[];
+  c.occ.forEach(o=>{ const e=db.entries[o.oid]; if(e) rows.push({fixed:o.fixed, hd:o.hd, wd:o.wd, name:o.name, target:o.target, actual:e.actual, status:e.status, oid:o.oid}); });
+  extraEntries().forEach(x=> rows.push({fixed:x.fixed, hd:x.hd, wd:weekdayOf(x.fixed), name:"חד-פעמי: "+x.name, target:null, actual:x.actual, status:"done", oid:x.oid}));
+  rows.sort((a,b)=> b.fixed-a.fixed);
+  if(!rows.length){ box.innerHTML='<div class="empty">אין עדיין רישומים החודש.</div>'; return; }
+  box.innerHTML="";
+  rows.forEach(r=>{
+    const el=document.createElement("div"); el.className="listitem";
+    const dl=heDay(r.hd)+" "+hebMonthName(view.y,view.m)+" · "+gregShort(r.fixed);
+    let amtCls="", diffTxt="";
+    if(r.status==="skipped"){ diffTxt="דולג"; }
+    else if(r.target!=null){
+      const diff=r.actual-r.target;
+      amtCls=diff>0?"over":(diff<0?"under":"");
+      diffTxt=diff>0?"חריגה "+money(diff):(diff<0?"חיסכון "+money(-diff):"בול על היעד");
+    }
+    el.innerHTML='<div><div class="nm">'+esc(r.name)+'</div><div class="sub">'+dl+(r.target!=null?" · יעד "+money(r.target):"")+(diffTxt?" · "+diffTxt:"")+'</div></div><div class="miniright"><span class="amt '+amtCls+'">'+(r.status==="skipped"?"—":money(r.actual))+'</span><button class="btn sm soft">✎</button></div>';
+    el.querySelector("button").onclick=()=>{
+      const cur=r.status==="skipped"?"":r.actual;
+      const val=prompt('סכום שהוצאת עבור "'+r.name+'" (ריק = מחיקה):', cur);
+      if(val===null) return;
+      if(val.trim()===""){ delete db.entries[r.oid]; toast("נמחק"); }
+      else{ const n=parseFloat(val); if(isNaN(n)){toast("לא תקין");return;} db.entries[r.oid].actual=n; db.entries[r.oid].status="done"; toast("עודכן ✓"); }
+      save(); render();
+    };
+    box.appendChild(el);
+  });
+}
+
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+$("#mPrev").onclick=()=>{ const p=prevHMonth(view.y,view.m); view=p; render(); };
+$("#mNext").onclick=()=>{ const p=nextHMonth(view.y,view.m); view=p; render(); };
+
+$("#incSave").onclick=()=>{
+  const v=parseFloat($("#incInput").value);
+  const k=hKey(view.y,view.m);
+  db.months[k]=db.months[k]||{};
+  db.months[k].income=isNaN(v)?0:v;
+  save(); toast("הכנסה נשמרה ✓"); render();
+};
+
+$("#wAdd").onclick=()=>{
+  const name=$("#wName").value.trim(), t=parseFloat($("#wTarget").value), day=$("#wDay").value;
+  if(!name){ toast("הזן תיאור"); return; }
+  db.weekly.push({ id:uid(), name, dayOfWeek:+day, target:isNaN(t)?0:t });
+  save(); $("#wName").value=""; $("#wTarget").value=""; toast("נוסף ✓"); render();
+};
+$("#mAdd").onclick=()=>{
+  const name=$("#mName").value.trim(), t=parseFloat($("#mTarget").value), due=parseInt($("#mDue").value);
+  if(!name){ toast("הזן תיאור"); return; }
+  db.monthly.push({ id:uid(), name, dueDay:due, target:isNaN(t)?0:t });
+  save(); $("#mName").value=""; $("#mTarget").value=""; toast("נוסף ✓"); render();
+};
+
+$("#xAdd").onclick=()=>{
+  const name=$("#xName").value.trim(), amt=parseFloat($("#xAmt").value);
+  if(!name){ toast("הזן תיאור"); return; }
+  if(isNaN(amt)){ toast("הזן סכום"); return; }
+  const t=hebToday();
+  let fixed, hy, hm, hd;
+  if(t.year===view.y && t.month===view.m){ fixed=todayFixed(); hy=t.year; hm=t.month; hd=t.day; }
+  else { fixed=fixedFromHebrew(view.y,view.m,1); hy=view.y; hm=view.m; hd=1; }
+  db.entries["x:"+uid()]={ type:"extra", name, actual:amt, fixed, hy, hm, hd, status:"done" };
+  save(); $("#xName").value=""; $("#xAmt").value=""; toast("נוסף ✓"); render();
+};
+
+$("#expBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  const t=hebToday();
+  a.download="gibuy-yaadim-"+t.year+"-"+t.month+"-"+t.day+".json"; a.click();
+  toast("גיבוי יוצא");
+};
+$("#impBtn").onclick=()=>$("#impFile").click();
+$("#impFile").onchange=(e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const o=JSON.parse(r.result); if(!o.entries){throw 0;} db=o; save(); toast("יובא ✓"); render(); }catch(_){ toast("קובץ לא תקין"); } };
+  r.readAsText(f);
+};
+$("#resetBtn").onclick=()=>{
+  if(confirm("לאפס את כל הנתונים? פעולה בלתי הפיכה.")){ db={months:{},weekly:[],monthly:[],entries:{}}; save(); toast("אופס"); render(); }
+};
+
+document.querySelectorAll(".tabs button").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    ["cal","home","month","plan","hist","more"].forEach(t=>$("#tab-"+t).classList.toggle("hide", t!==b.dataset.tab));
+    window.scrollTo(0,0);
+  };
+});
+
+let toastT;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1600); }
+
+(function(){
+  const sel=$("#mDue");
+  for(let d=1; d<=30; d++){ const o=document.createElement("option"); o.value=d; o.textContent=heDay(d); sel.appendChild(o); }
+})();
+
+/* GitHub Gist sync */
+const GH_DESC="yaadim-kalkaliyim-sync", GH_FILE="budget-data.json";
+let ghToken=localStorage.getItem("gh_token")||"";
+let ghGist=localStorage.getItem("gh_gist")||"";
+let syncState="off", syncTimer=null, syncBusy=false;
+
+function renderSyncUI(msg){
+  const map={off:["⚪","סנכרון כבוי — לחץ להגדרה","",""],idle:["☁️","מסונכרן","ok","מסונכרן"],busy:["🔄","מסנכרן…","busy","מסנכרן…"],err:["⚠️",(msg||"שגיאת סנכרון"),"err",(msg||"שגיאה")]};
+  const m=map[syncState]||map.off;
+  const bar=$("#syncBar");
+  if(bar){ bar.textContent=m[0]+" "+m[1]; bar.className="syncbar "+(m[2]||""); }
+  const st=$("#syncStatus"); if(st) st.textContent=m[3]||m[1];
+  const disc=$("#syncDisc"); if(disc) disc.style.display=ghToken?"":"none";
+}
+function setSync(s,msg){ syncState=s; renderSyncUI(msg); }
+
+async function ghApi(path,opts){
+  const r=await fetch("https://api.github.com"+path,Object.assign({headers:{Authorization:"token "+ghToken,Accept:"application/vnd.github+json"}},opts||{}));
+  if(!r.ok){ let t=""; try{t=(await r.json()).message||"";}catch(e){} throw new Error((r.status)+(t?" "+t:"")); }
+  return r.json();
+}
+async function connectSync(token){
+  ghToken=(token||"").trim();
+  if(!ghToken){ toast("הזן טוקן"); return; }
+  localStorage.setItem("gh_token",ghToken);
+  setSync("busy"); syncBusy=true;
+  try{
+    const gists=await ghApi("/gists?per_page=100");
+    const found=gists.find(g=> g.description===GH_DESC && g.files && g.files[GH_FILE]);
+    if(found){ ghGist=found.id; }
+    else{ const c=await ghApi("/gists",{method:"POST",body:JSON.stringify({description:GH_DESC,public:false,files:{[GH_FILE]:{content:JSON.stringify(db)}}})}); ghGist=c.id; }
+    localStorage.setItem("gh_gist",ghGist);
+    syncBusy=false;
+    await reconcile();
+    toast("סנכרון מחובר ✓");
+  }catch(e){ syncBusy=false; setSync("err",e.message); toast("חיבור נכשל: "+e.message); }
+}
+async function reconcile(){
+  if(!ghToken||!ghGist||syncBusy) return;
+  syncBusy=true; setSync("busy");
+  try{
+    const g=await ghApi("/gists/"+ghGist);
+    const content=g.files&&g.files[GH_FILE]&&g.files[GH_FILE].content;
+    const remote=content?JSON.parse(content):null;
+    const rU=(remote&&remote.updatedAt)||0, lU=db.updatedAt||0;
+    if(remote && rU>lU){ db=remote; localStorage.setItem(KEY,JSON.stringify(db)); render(); setSync("idle"); }
+    else if(lU>rU){ await ghApi("/gists/"+ghGist,{method:"PATCH",body:JSON.stringify({files:{[GH_FILE]:{content:JSON.stringify(db)}}})}); setSync("idle"); }
+    else { setSync("idle"); }
+  }catch(e){ setSync("err",e.message); }
+  syncBusy=false;
+}
+async function pushSync(){
+  if(!ghToken||!ghGist) return;
+  if(syncBusy){ syncTimer=setTimeout(pushSync,1200); return; }
+  syncBusy=true; setSync("busy");
+  try{ await ghApi("/gists/"+ghGist,{method:"PATCH",body:JSON.stringify({files:{[GH_FILE]:{content:JSON.stringify(db)}}})}); setSync("idle"); }
+  catch(e){ setSync("err",e.message); }
+  syncBusy=false;
+}
+function queueSync(){
+  if(!ghToken||!ghGist) return;
+  clearTimeout(syncTimer); setSync("busy");
+  syncTimer=setTimeout(pushSync,1500);
+}
+function disconnectSync(){
+  ghToken=""; ghGist=""; localStorage.removeItem("gh_token"); localStorage.removeItem("gh_gist");
+  const ti=$("#ghTokenInput"); if(ti) ti.value="";
+  setSync("off"); toast("סנכרון נותק");
+}
+function showSyncTab(){
+  document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("on"));
+  const b=document.querySelector('.tabs button[data-tab="more"]'); if(b) b.classList.add("on");
+  ["cal","home","month","plan","hist","more"].forEach(t=>$("#tab-"+t).classList.toggle("hide", t!=="more"));
+  window.scrollTo(0,0);
+}
+
+$("#ghConnect").onclick=()=>connectSync($("#ghTokenInput").value);
+$("#ghSyncNow").onclick=()=>{ if(!ghToken){ toast("חבר טוקן קודם"); return; } reconcile(); };
+$("#syncDisc").onclick=disconnectSync;
+
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferredPrompt=e; const c=$("#installCard"); if(c) c.style.display=""; });
+$("#installBtn").onclick=async()=>{ if(!deferredPrompt){ toast("כבר מותקן / לא זמין"); return; } deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; const c=$("#installCard"); if(c) c.style.display="none"; };
+
+if(!db.weekly.length && !db.monthly.length && !Object.keys(db.months).length && !Object.keys(db.entries).length){
+  const t=hebToday();
+  db.weekly.push({id:uid(), name:"קניות בסופר", dayOfWeek:2, target:400});
+  db.monthly.push({id:uid(), name:"שכר דירה", dueDay:1, target:4000});
+  db.months[hKey(t.year,t.month)]={ income:15000 };
+  save();
+}
+
+render();
+
+renderSyncUI();
+if(ghToken && ghGist){
+  reconcile();
+  window.addEventListener("focus",()=>{ reconcile(); });
+  setInterval(()=>{ if(!document.hidden) reconcile(); }, 60000);
+}
+</script>
+</body>
+</html>

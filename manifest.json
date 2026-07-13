@@ -2,7 +2,7 @@
   "name": "יעדים כלכליים",
   "short_name": "יעדים",
   "description": "ניהול יעדים כלכליים לפי לוח שנה עברי",
-  "start_url": "./budget-app.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
