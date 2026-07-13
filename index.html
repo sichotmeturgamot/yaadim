@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>יעדים כלכליים</title>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1c2333; --muted:#69728a;
+    --line:#e5e9f2; --brand:#3b5bdb; --brand-soft:#eef2ff;
+    --good:#2f9e44; --good-soft:#e7f6ec; --warn:#e8590c; --warn-soft:#fff2e8;
+    --bad:#e03131; --bad-soft:#ffecec; --shadow:0 1px 3px rgba(20,30,60,.06),0 8px 24px rgba(20,30,60,.05);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Rubik",Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5}
+  .wrap{max-width:820px;margin:0 auto;padding:16px 14px 90px}
+  h1,h2,h3{margin:0}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .topbar h1{font-size:20px;font-weight:800;letter-spacing:-.2px}
+  .monthnav{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+  .monthnav button{border:none;background:transparent;font-size:18px;width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--brand)}
+  .monthnav button:hover{background:var(--brand-soft)}
+  .monthnav .lbl{font-weight:700;min-width:110px;text-align:center;font-size:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
+  .card h2{font-size:16px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .muted{color:var(--muted)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:560px){.grid3{grid-template-columns:1fr}}
+  .stat{background:var(--bg);border-radius:12px;padding:12px 14px;text-align:center}
+  .stat .k{font-size:12px;color:var(--muted);margin-bottom:4px}
+  .stat .v{font-size:22px;font-weight:800;letter-spacing:-.5px}
+  .stat.good .v{color:var(--good)} .stat.bad .v{color:var(--bad)} .stat.brand .v{color:var(--brand)}
+  .bar{height:12px;border-radius:99px;background:var(--line);overflow:hidden;margin:8px 0}
+  .bar>span{display:block;height:100%;border-radius:99px;background:var(--brand);transition:width .4s}
+  .bar.over>span{background:var(--bad)}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:5px 11px;border-radius:99px}
+  .pill.good{background:var(--good-soft);color:var(--good)}
+  .pill.warn{background:var(--warn-soft);color:var(--warn)}
+  .pill.bad{background:var(--bad-soft);color:var(--bad)}
+  input,select{font-family:inherit;font-size:15px;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);width:100%}
+  input:focus,select:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+  label.fld{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:5px}
+  .btn{border:none;border-radius:10px;padding:9px 15px;font-size:14px;font-weight:700;cursor:pointer;background:var(--brand);color:#fff;font-family:inherit}
+  .btn:hover{filter:brightness(1.05)}
+  .btn.ghost{background:var(--brand-soft);color:var(--brand)}
+  .btn.soft{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+  .btn.sm{padding:6px 10px;font-size:13px}
+  .btn.danger{background:var(--bad-soft);color:var(--bad)}
+  .prompt{border:1px solid var(--warn);background:var(--warn-soft);border-radius:14px;padding:14px;margin-bottom:10px}
+  .prompt .head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+  .prompt .head .nm{font-weight:800}
+  .prompt .head .dt{font-size:12px;color:var(--warn);font-weight:700;text-align:left}
+  .prompt .inrow{display:flex;gap:8px;align-items:center}
+  .prompt .inrow input{max-width:150px}
+  .tgt{font-size:13px;color:var(--muted)}
+  .listitem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .listitem:last-child{border-bottom:none}
+  .listitem .nm{font-weight:700}
+  .listitem .sub{font-size:12px;color:var(--muted)}
+  .amt{font-weight:800;font-variant-numeric:tabular-nums}
+  .amt.over{color:var(--bad)} .amt.under{color:var(--good)}
+  .tabs{position:fixed;bottom:0;right:0;left:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:20}
+  .tabs .inner{display:flex;max-width:820px;width:100%}
+  .tabs button{flex:1;border:none;background:transparent;padding:10px 4px 12px;font-family:inherit;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .tabs button .ic{font-size:19px;line-height:1}
+  .tabs button.on{color:var(--brand)}
+  .hide{display:none!important}
+  .addform{display:grid;grid-template-columns:1fr;gap:10px;margin-top:6px}
+  .addform .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .empty{text-align:center;color:var(--muted);padding:18px 6px;font-size:14px}
+  .miniright{margin-inline-start:auto;display:flex;gap:6px;align-items:center}
+  .catrow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .catrow .barwrap{flex:1}
+  .catrow .lab{min-width:120px;font-size:13px;font-weight:600}
+  .catrow .nums{font-size:12px;color:var(--muted);white-space:nowrap}
+  .toast{position:fixed;bottom:78px;right:50%;transform:translateX(50%);background:var(--ink);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;font-weight:700;opacity:0;transition:opacity .3s;z-index:40;pointer-events:none}
+  .toast.show{opacity:1}
+  .dayname{font-size:12px;color:var(--brand);font-weight:700}
+  .greg{opacity:.7}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal .dow{text-align:center;font-size:12px;font-weight:800;color:var(--muted);padding:2px 0}
+  .cal .cell{min-height:78px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:4px;display:flex;flex-direction:column;gap:3px;overflow:hidden}
+  .cal .cell.blank{background:transparent;border:none;min-height:0}
+  .cal .cell.today{border-color:var(--brand);box-shadow:0 0 0 1.5px var(--brand)}
+  .cal .cell .dn{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800}
+  .cal .cell .dn .gg{font-size:9px;color:var(--muted);font-weight:600}
+  .chip{font-size:10px;line-height:1.25;padding:2px 4px;border-radius:5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;border:1px solid transparent}
+  .chip.plan{background:var(--brand-soft);color:var(--muted)}
+  .chip.pend{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+  .chip.done{background:var(--good-soft);color:var(--good)}
+  .chip.over{background:var(--bad-soft);color:var(--bad)}
+  .chip.skip{background:var(--line);color:var(--muted);text-decoration:line-through}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .legend .lg{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);font-weight:600}
+  .legend .dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+  @media(max-width:560px){
+    .cal{gap:2px}
+    .cal .cell{min-height:64px;padding:2px;border-radius:7px}
+    .chip{font-size:9px;padding:1px 2px}
+    .cal .cell .dn{font-size:11px}
+    .cal .cell .dn .gg{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>💰 יעדים כלכליים</h1>
+    <div class="monthnav">
+      <button id="mPrev" title="חודש קודם">‹</button>
+      <span class="lbl" id="mLabel">—</span>
+      <button id="mNext" title="חודש הבא">›</button>
+    </div>
+  </div>
+
+  <!-- ===== CALENDAR ===== -->
+  <section id="tab-cal">
+    <div class="card">
+      <h2>📅 לוח החודש</h2>
+      <div class="legend">
+        <span class="lg"><span class="dot" style="background:var(--warn)"></span>ממתין להזנה</span>
+        <span class="lg"><span class="dot" style="background:var(--good)"></span>בפועל (ביעד)</span>
+        <span class="lg"><span class="dot" style="background:var(--bad)"></span>חריגה</span>
+        <span class="lg"><span class="dot" style="background:var(--brand-soft)"></span>מתוכנן</span>
+      </div>
+      <div class="cal" id="calGrid"></div>
+      <div class="muted" style="font-size:12px;margin-top:10px">לחיצה על פריט בלוח מאפשרת להזין או לעדכן כמה הוצאת בפועל.</div>
+    </div>
+    <div class="card">
+      <h2>📊 סיכום מהיר</h2>
+      <div class="grid3">
+        <div class="stat brand"><div class="k">הכנסה</div><div class="v" id="cIncome">—</div></div>
+        <div class="stat"><div class="k">יעד</div><div class="v" id="cPlanned">—</div></div>
+        <div class="stat" id="cActualBox"><div class="k">בפועל</div><div class="v" id="cActual">—</div></div>
+      </div>
+      <div id="cStatus" style="margin-top:12px;text-align:center"></div>
+    </div>
+  </section>
+
+  <!-- ===== HOME ===== -->
+  <section id="tab-home" class="hide">
+    <div class="card" id="promptsCard">
+      <h2>🔔 ממתין להזנה</h2>
+      <div id="promptsList"></div>
+    </div>
+
+    <div class="card">
+      <h2>📊 מצב החודש</h2>
+      <div class="grid3">
+        <div class="stat brand"><div class="k">הכנסה</div><div class="v" id="sIncome">—</div></div>
+        <div class="stat"><div class="k">יעד הוצאות</div><div class="v" id="sPlanned">—</div></div>
+        <div class="stat" id="sActualBox"><div class="k">הוצאת בפועל</div><div class="v" id="sActual">—</div></div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="row" style="justify-content:space-between"><span class="muted">ניצול מול היעד</span><span id="usePct" class="muted">—</span></div>
+        <div class="bar" id="useBar"><span style="width:0"></span></div>
+      </div>
+      <div class="row" style="justify-content:space-between;align-items:center;margin-top:10px">
+        <div>
+          <div class="muted" style="font-size:12px">נשאר לניצול מההכנסה</div>
+          <div class="v amt" id="sRemain" style="font-size:20px">—</div>
+        </div>
+        <div id="statusPill"></div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="muted" style="font-size:12px;margin-bottom:4px">תחזית לסוף החודש (בהנחה שתעמוד ביעדים בהמשך)</div>
+        <div class="row" style="align-items:center;gap:8px"><span class="v amt" id="sProjected" style="font-size:16px">—</span><span class="muted">מתוך הכנסה של</span><span id="sProjIncome">—</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🗂️ לפי קטגוריה</h2>
+      <div id="catBreakdown"></div>
+    </div>
+
+    <div class="card">
+      <h2>➕ הוצאה חד-פעמית</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:8px">הוצאה שלא בתוכנית — נספרת ב"בפועל" של החודש.</div>
+      <div class="addform">
+        <div class="g2">
+          <div><label class="fld">תיאור</label><input id="xName" placeholder="לדוגמה: מתנה"></div>
+          <div><label class="fld">סכום (₪)</label><input id="xAmt" type="number" inputmode="decimal" placeholder="0"></div>
+        </div>
+        <div><button class="btn" id="xAdd">הוסף הוצאה</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== MONTH / INCOME ===== -->
+  <section id="tab-month" class="hide">
+    <div class="card">
+      <h2>💵 הכנסה לחודש <span id="incMonthLbl" class="muted" style="font-weight:600"></span></h2>
+      <label class="fld">כמה אתה צפוי להכניס החודש? (₪)</label>
+      <div class="row" style="align-items:center">
+        <input id="incInput" type="number" inputmode="decimal" placeholder="0" style="max-width:220px">
+        <button class="btn" id="incSave">שמור</button>
+      </div>
+      <div class="muted" style="font-size:13px;margin-top:8px">ההכנסה נשמרת לכל חודש עברי בנפרד.</div>
+    </div>
+    <div class="card">
+      <h2>🧮 סיכום התכנון</h2>
+      <div class="listitem"><span class="nm">הכנסה</span><span class="amt" id="pmIncome">—</span></div>
+      <div class="listitem"><span class="nm">יעד הוצאות שבועיות (סה״כ החודש)</span><span class="amt" id="pmWeekly">—</span></div>
+      <div class="listitem"><span class="nm">יעד הוצאות קבועות</span><span class="amt" id="pmMonthly">—</span></div>
+      <div class="listitem"><span class="nm" style="font-weight:800">חיסכון מתוכנן</span><span class="amt" id="pmSave" style="font-weight:800">—</span></div>
+    </div>
+  </section>
+
+  <!-- ===== RECURRING ===== -->
+  <section id="tab-plan" class="hide">
+    <div class="card">
+      <h2>🔁 הוצאות שבועיות קבועות</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:10px">למשל: כל יום שלישי קניות בסופר. חוזר בכל שבוע ביום שבחרת.</div>
+      <div id="weeklyList"></div>
+      <div class="addform" style="margin-top:14px">
+        <div class="g2">
+          <div><label class="fld">תיאור</label><input id="wName" placeholder="קניות בסופר"></div>
+          <div><label class="fld">יום בשבוע</label>
+            <select id="wDay">
+              <option value="0">ראשון</option><option value="1">שני</option>
+              <option value="2">שלישי</option><option value="3">רביעי</option>
+              <option value="4">חמישי</option><option value="5">שישי</option>
+              <option value="6">שבת</option>
+            </select>
+          </div>
+        </div>
+        <div class="g2">
+          <div><label class="fld">יעד לכל פעם (₪)</label><input id="wTarget" type="number" inputmode="decimal" placeholder="0"></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn" id="wAdd" style="width:100%">הוסף</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📅 הוצאות חודשיות קבועות</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:10px">למשל: שכר דירה, מנוי, ביטוח — פעם בחודש עברי בתאריך קבוע.</div>
+      <div id="monthlyList"></div>
+      <div class="addform" style="margin-top:14px">
+        <div class="g2">
+          <div><label class="fld">תיאור</label><input id="mName" placeholder="שכר דירה"></div>
+          <div><label class="fld">יום עברי בחודש</label>
+            <select id="mDue"></select>
+          </div>
+        </div>
+        <div class="g2">
+          <div><label class="fld">יעד (₪)</label><input id="mTarget" type="number" inputmode="decimal" placeholder="0"></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn" id="mAdd" style="width:100%">הוסף</button></div>
+        </div>
+      </div>
+      <div class="muted" style="font-size:12px;margin-top:8px">אם היום שבחרת לא קיים בחודש מסוים (חודש חסר) — יירשם ביום האחרון של אותו חודש.</div>
+    </div>
+  </section>
+
+  <!-- ===== HISTORY ===== -->
+  <section id="tab-hist" class="hide">
+    <div class="card">
+      <h2>🧾 היסטוריית החודש</h2>
+      <div id="histList"></div>
+    </div>
+  </section>
+
+  <!-- ===== BACKUP ===== -->
+  <section id="tab-more" class="hide">
+    <div class="card">
+      <h2>💾 גיבוי ושחזור</h2>
+      <div class="muted" style="font-size:13px;margin-bottom:12px">הנתונים נשמרים במכשיר. מומלץ לייצא גיבוי מדי פעם.</div>
+      <div class="row">
+        <button class="btn ghost" id="expBtn">⬇️ ייצוא גיבוי (JSON)</button>
+        <button class="btn soft" id="impBtn">⬆️ ייבוא גיבוי</button>
+        <input type="file" id="impFile" accept="application/json" class="hide">
+      </div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
+      <button class="btn danger" id="resetBtn">🗑️ איפוס כל הנתונים</button>
+    </div>
+    <div class="card">
+      <h2>ℹ️ איך זה עובד</h2>
+      <p class="muted" style="font-size:13.5px;margin:0 0 8px">האפליקציה עובדת לפי <b>לוח השנה העברי</b>. בכל חודש עברי הגדר את ההכנסה תחת <b>חודש</b>, והגדר הוצאות חוזרות תחת <b>תכנון</b> — שבועיות (יום קבוע) וחודשיות (יום עברי קבוע בחודש).</p>
+      <p class="muted" style="font-size:13.5px;margin:0">כשמגיע התאריך העברי של הוצאה מתוכננת, היא תופיע במסך הבית תחת <b>ממתין להזנה</b> — הזן כמה הוצאת בפועל, והאפליקציה תראה אם עמדת ביעד.</p>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs"><div class="inner">
+  <button data-tab="cal" class="on"><span class="ic">📅</span>לוח</button>
+  <button data-tab="home"><span class="ic">🏠</span>בית</button>
+  <button data-tab="month"><span class="ic">💵</span>חודש</button>
+  <button data-tab="plan"><span class="ic">🔁</span>תכנון</button>
+  <button data-tab="hist"><span class="ic">🧾</span>היסטוריה</button>
+  <button data-tab="more"><span class="ic">💾</span>גיבוי</button>
+</div></nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const KEY = "budgetApp_heb_v1";
+const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+const $ = s => document.querySelector(s);
+
+/* ================= Hebrew calendar engine (Dershowitz–Reingold) ================= */
+function gLeap(y){ return (y%4===0)&&(y%100!==0||y%400===0); }
+function fixedFromGreg(y,m,d){
+  return 365*(y-1)+Math.floor((y-1)/4)-Math.floor((y-1)/100)+Math.floor((y-1)/400)
+    +Math.floor((367*m-362)/12)+(m<=2?0:(gLeap(y)?-1:-2))+d;
+}
+function gregYearFromFixed(date){
+  const d0=date-1;
+  const n400=Math.floor(d0/146097), d1=d0%146097;
+  const n100=Math.floor(d1/36524), d2=d1%36524;
+  const n4=Math.floor(d2/1461), d3=d2%1461;
+  const n1=Math.floor(d3/365);
+  const year=400*n400+100*n100+4*n4+n1;
+  return (n100===4||n1===4)?year:year+1;
+}
+function gregFromFixed(date){
+  const year=gregYearFromFixed(date);
+  const priorDays=date-fixedFromGreg(year,1,1);
+  const corr=(date<fixedFromGreg(year,3,1))?0:(gLeap(year)?1:2);
+  const month=Math.floor((12*(priorDays+corr)+373)/367);
+  const day=date-fixedFromGreg(year,month,1)+1;
+  return {year,month,day};
+}
+const HEBREW_EPOCH = -1373427;
+function hLeap(y){ return ((7*y+1)%19)<7; }
+function lastMonthOfHYear(y){ return hLeap(y)?13:12; }
+function hElapsedDays(year){
+  const monthsElapsed=Math.floor((235*year-234)/19);
+  const partsElapsed=12084+13753*monthsElapsed;
+  let day=29*monthsElapsed+Math.floor(partsElapsed/25920);
+  if(((3*(day+1))%7)<3) day+=1;
+  return day;
+}
+function hYearCorrection(year){
+  const ny0=hElapsedDays(year-1), ny1=hElapsedDays(year), ny2=hElapsedDays(year+1);
+  if((ny2-ny1)===356) return 2;
+  if((ny1-ny0)===382) return 1;
+  return 0;
+}
+function hNewYear(year){ return HEBREW_EPOCH+hElapsedDays(year)+hYearCorrection(year); }
+function daysInHYear(year){ return hNewYear(year+1)-hNewYear(year); }
+function longCheshvan(y){ const d=daysInHYear(y); return d===355||d===385; }
+function shortKislev(y){ const d=daysInHYear(y); return d===353||d===383; }
+function lastDayOfHMonth(y,m){
+  if([2,4,6,10,13].includes(m)) return 29;
+  if(m===12&&!hLeap(y)) return 29;
+  if(m===8&&!longCheshvan(y)) return 29;
+  if(m===9&&shortKislev(y)) return 29;
+  return 30;
+}
+function fixedFromHebrew(year,month,day){
+  let t=hNewYear(year)+day-1;
+  if(month<7){
+    for(let m=7;m<=lastMonthOfHYear(year);m++) t+=lastDayOfHMonth(year,m);
+    for(let m=1;m<month;m++) t+=lastDayOfHMonth(year,m);
+  } else {
+    for(let m=7;m<month;m++) t+=lastDayOfHMonth(year,m);
+  }
+  return t;
+}
+function hebrewFromFixed(date){
+  let year=Math.floor((date-HEBREW_EPOCH)*98496/35975351)+1;
+  while(hNewYear(year+1)<=date) year++;
+  while(hNewYear(year)>date) year--;
+  let start=(date<fixedFromHebrew(year,1,1))?7:1;
+  let month=start;
+  while(fixedFromHebrew(year,month,lastDayOfHMonth(year,month))<date) month++;
+  const day=date-fixedFromHebrew(year,month,1)+1;
+  return {year,month,day};
+}
+function weekdayOf(f){ return ((f%7)+7)%7; }
+function todayFixed(){ const d=new Date(); return fixedFromGreg(d.getFullYear(),d.getMonth()+1,d.getDate()); }
+function hebToday(){ return hebrewFromFixed(todayFixed()); }
+
+/* month names + gematria */
+function hebMonthName(y,m){
+  const base={1:"ניסן",2:"אייר",3:"סיון",4:"תמוז",5:"אב",6:"אלול",7:"תשרי",8:"חשון",9:"כסלו",10:"טבת",11:"שבט",12:"אדר",13:"אדר ב׳"};
+  if(hLeap(y)){ if(m===12) return "אדר א׳"; if(m===13) return "אדר ב׳"; }
+  return base[m];
+}
+function gematria(n){
+  const ones=["","א","ב","ג","ד","ה","ו","ז","ח","ט"];
+  const tens=["","י","כ","ל","מ","נ","ס","ע","פ","צ"];
+  const huns=["","ק","ר","ש","ת","תק","תר","תש","תת","תתק"];
+  let s=huns[Math.floor(n/100)]; n%=100;
+  if(n===15) s+="טו";
+  else if(n===16) s+="טז";
+  else { s+=tens[Math.floor(n/10)]+ones[n%10]; }
+  return s;
+}
+function gPunct(str){
+  if(str.length===0) return str;
+  if(str.length===1) return str+"׳";
+  return str.slice(0,-1)+"״"+str.slice(-1);
+}
+function heDay(n){ return gPunct(gematria(n)); }
+function heYear(y){ return gPunct(gematria(y%1000)); }
+function monthLabel(y,m){ return hebMonthName(y,m)+" "+heYear(y); }
+// order of hebrew months within a civil year: 7..last,1..6
+function nextHMonth(y,m){
+  const last=lastMonthOfHYear(y);
+  if(m===6) return {y:y+1,m:7};
+  if(m===last) return {y:y,m:1};
+  return {y:y,m:m+1};
+}
+function prevHMonth(y,m){
+  const last=lastMonthOfHYear(y);
+  if(m===7) return {y:y-1,m:6};
+  if(m===1) return {y:y,m:last};
+  return {y:y,m:m-1};
+}
+
+/* ================= state ================= */
+let db = load();
+let view = (function(){ const t=hebToday(); return {y:t.year, m:t.month}; })();
+
+function load(){
+  try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r) return r; }catch(e){}
+  return { months:{}, weekly:[], monthly:[], entries:{} };
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(db)); }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function hKey(y,m){ return "H"+y+"-"+m; }
+function money(n){ return "₪" + Math.round(+n||0).toLocaleString("he-IL"); }
+function gregShort(f){ const g=gregFromFixed(f); return String(g.day).padStart(2,"0")+"/"+String(g.month).padStart(2,"0"); }
+
+/* ================= occurrences for viewed hebrew month ================= */
+function occurrences(){
+  const y=view.y, m=view.m;
+  const ld=lastDayOfHMonth(y,m);
+  const start=fixedFromHebrew(y,m,1);
+  const list=[];
+  db.weekly.forEach(w=>{
+    for(let d=1; d<=ld; d++){
+      const f=start+d-1;
+      if(weekdayOf(f)===+w.dayOfWeek){
+        list.push({ oid:"w:"+w.id+":"+f, type:"weekly", refId:w.id, name:w.name, target:+w.target, fixed:f, hd:d, wd:weekdayOf(f) });
+      }
+    }
+  });
+  db.monthly.forEach(mo=>{
+    const d=Math.min(+mo.dueDay||1, ld);
+    const f=start+d-1;
+    list.push({ oid:"m:"+mo.id+":"+hKey(y,m), type:"monthly", refId:mo.id, name:mo.name, target:+mo.target, fixed:f, hd:d, wd:weekdayOf(f) });
+  });
+  list.sort((a,b)=> a.fixed-b.fixed);
+  return list;
+}
+function extraEntries(){
+  return Object.entries(db.entries)
+    .filter(([k,v])=> v.type==="extra" && v.hy===view.y && v.hm===view.m)
+    .map(([k,v])=>({ oid:k, ...v }));
+}
+
+/* ================= computations ================= */
+function computeMonth(){
+  const occ=occurrences();
+  const tf=todayFixed();
+  let planned=0, actual=0, projected=0, plannedToDate=0, actualToDate=0;
+  const pending=[];
+  occ.forEach(o=>{
+    planned+=o.target;
+    const e=db.entries[o.oid];
+    if(o.fixed<=tf) plannedToDate+=o.target;
+    if(e && e.status!=="skipped"){
+      actual+=+e.actual; projected+=+e.actual;
+      if(o.fixed<=tf) actualToDate+=+e.actual;
+    } else if(e && e.status==="skipped"){
+      /* 0 */
+    } else {
+      projected+=o.target;
+      if(o.fixed<=tf) pending.push(o);
+    }
+  });
+  extraEntries().forEach(x=>{ actual+=+x.actual; projected+=+x.actual; if(x.fixed<=tf) actualToDate+=+x.actual; });
+  const income=+(db.months[hKey(view.y,view.m)]?.income||0);
+  return { occ, income, planned, actual, projected, plannedToDate, actualToDate, remaining:income-actual, pending };
+}
+
+/* ================= rendering ================= */
+function render(){
+  $("#mLabel").textContent = monthLabel(view.y, view.m);
+  renderCalendar();
+  renderPrompts();
+  renderDashboard();
+  renderCats();
+  renderMonthTab();
+  renderPlan();
+  renderHist();
+}
+
+function saveOccValue(o,val){
+  db.entries[o.oid]={ type:o.type, refId:o.refId, name:o.name, target:o.target, fixed:o.fixed, hy:view.y, hm:view.m, hd:o.hd, actual:val, status:"done" };
+}
+function editOcc(o){
+  const e=db.entries[o.oid];
+  const cur=(e&&e.status!=="skipped")?e.actual:"";
+  const val=prompt(o.name+" — "+heDay(o.hd)+" "+hebMonthName(view.y,view.m)+"\nיעד: "+money(o.target)+". כמה הוצאת בפועל?  (ריק = נקה)", cur);
+  if(val===null) return;
+  if(String(val).trim()===""){ delete db.entries[o.oid]; toast("נוקה"); }
+  else{ const n=parseFloat(val); if(isNaN(n)){ toast("לא תקין"); return; } saveOccValue(o,n); toast("נשמר ✓"); }
+  save(); render();
+}
+function editExtra(oid){
+  const x=db.entries[oid]; if(!x) return;
+  const val=prompt("הוצאה חד-פעמית: "+x.name+"  (ריק = מחיקה)", x.actual);
+  if(val===null) return;
+  if(String(val).trim()===""){ delete db.entries[oid]; toast("נמחק"); }
+  else{ const n=parseFloat(val); if(isNaN(n)){ toast("לא תקין"); return; } x.actual=n; toast("עודכן ✓"); }
+  save(); render();
+}
+
+function renderCalendar(){
+  const y=view.y, m=view.m;
+  const start=fixedFromHebrew(y,m,1), wd=weekdayOf(start), ld=lastDayOfHMonth(y,m);
+  const tf=todayFixed();
+  const byDay={};
+  occurrences().forEach(o=>{ (byDay[o.hd]=byDay[o.hd]||[]).push({kind:"occ",o}); });
+  extraEntries().forEach(x=>{ (byDay[x.hd]=byDay[x.hd]||[]).push({kind:"extra",x}); });
+  const grid=$("#calGrid"); grid.innerHTML="";
+  ["א","ב","ג","ד","ה","ו","ש"].forEach(d=>{ const h=document.createElement("div"); h.className="dow"; h.textContent=d; grid.appendChild(h); });
+  for(let i=0;i<wd;i++){ const b=document.createElement("div"); b.className="cell blank"; grid.appendChild(b); }
+  for(let d=1; d<=ld; d++){
+    const f=start+d-1;
+    const g=gregFromFixed(f);
+    const cell=document.createElement("div"); cell.className="cell"+(f===tf?" today":"");
+    cell.innerHTML='<div class="dn"><span>'+heDay(d)+'</span><span class="gg">'+g.day+'/'+g.month+'</span></div>';
+    (byDay[d]||[]).forEach(item=>{
+      const chip=document.createElement("div");
+      if(item.kind==="occ"){
+        const o=item.o, e=db.entries[o.oid];
+        let cls,txt;
+        if(e&&e.status==="skipped"){ cls="skip"; txt=o.name; }
+        else if(e){ const over=+e.actual>o.target; cls=over?"over":"done"; txt=o.name+" "+money(e.actual); }
+        else if(f<=tf){ cls="pend"; txt=o.name+" • הזן"; }
+        else { cls="plan"; txt=o.name+" "+money(o.target); }
+        chip.className="chip "+cls; chip.textContent=txt; chip.title=txt;
+        chip.onclick=()=>editOcc(o);
+      } else {
+        const x=item.x; chip.className="chip done"; chip.textContent=x.name+" "+money(x.actual); chip.title=chip.textContent;
+        chip.onclick=()=>editExtra(x.oid);
+      }
+      cell.appendChild(chip);
+    });
+    grid.appendChild(cell);
+  }
+  // quick summary
+  const c=computeMonth();
+  $("#cIncome").textContent=c.income? money(c.income):"—";
+  $("#cPlanned").textContent=money(c.planned);
+  $("#cActual").textContent=money(c.actual);
+  const ab=$("#cActualBox"); ab.className="stat";
+  if(c.plannedToDate>0){ ab.classList.add(c.actualToDate>c.plannedToDate?"bad":"good"); }
+  const st=$("#cStatus");
+  if(!c.income){ st.innerHTML='<span class="pill warn">הגדר הכנסה בלשונית "חודש"</span>'; }
+  else if(c.projected>c.income){ st.innerHTML='<span class="pill bad">חריגה צפויה: '+money(c.projected-c.income)+'</span>'; }
+  else { st.innerHTML='<span class="pill good">במסלול · חיסכון צפוי '+money(c.income-c.projected)+'</span>'; }
+}
+
+function dateLabel(o){ return "יום "+DAYS[o.wd]+" · "+heDay(o.hd)+" "+hebMonthName(view.y,view.m); }
+
+function renderPrompts(){
+  const {pending}=computeMonth();
+  const box=$("#promptsList");
+  if(!pending.length){ $("#promptsCard").classList.add("hide"); return; }
+  $("#promptsCard").classList.remove("hide");
+  box.innerHTML="";
+  pending.forEach(o=>{
+    const el=document.createElement("div");
+    el.className="prompt";
+    el.innerHTML=
+      '<div class="head"><span class="nm">'+esc(o.name)+'</span><span class="dt">'+dateLabel(o)+'<br><span class="greg">'+gregShort(o.fixed)+'</span></span></div>'+
+      '<div class="tgt">יעד: '+money(o.target)+' — כמה הוצאת בפועל?</div>'+
+      '<div class="inrow" style="margin-top:8px"><input type="number" inputmode="decimal" placeholder="'+(o.target||0)+'"><button class="btn 
