@@ -13,21 +13,21 @@
 <style>
   :root{
     color-scheme: light;
-    --bg:#f4f6fb; --card:#ffffff; --ink:#1c2333; --muted:#69728a;
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1c2333; --muted:#5b6478;
     --line:#e5e9f2; --brand:#3b5bdb; --brand-soft:#eef2ff;
     --good:#2f9e44; --good-soft:#e7f6ec; --warn:#e8590c; --warn-soft:#fff2e8;
-    --bad:#e03131; --bad-soft:#ffecec; --shadow:0 1px 3px rgba(20,30,60,.06),0 8px 24px rgba(20,30,60,.05);
+    --bad:#e03131; --bad-soft:#ffecec; --save:#7048e8; --save-soft:#f3f0ff; --shadow:0 1px 3px rgba(20,30,60,.06),0 8px 24px rgba(20,30,60,.05);
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:"Segoe UI","Rubik",Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5}
-  .wrap{max-width:860px;margin:0 auto;padding:16px 14px 90px}
+  .wrap{max-width:920px;margin:0 auto;padding:16px 14px 90px}
   h1,h2,h3{margin:0}
   .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
   .topbar h1{font-size:20px;font-weight:800;letter-spacing:-.2px}
   .monthnav{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
   .monthnav button{border:none;background:transparent;font-size:18px;width:30px;height:30px;border-radius:8px;cursor:pointer;color:var(--brand)}
   .monthnav button:hover{background:var(--brand-soft)}
-  .monthnav .lbl{font-weight:700;min-width:120px;text-align:center;font-size:14px}
+  .monthnav .lbl{font-weight:800;min-width:120px;text-align:center;font-size:16px;color:var(--ink)}
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow);margin-bottom:14px}
   .card h2{font-size:16px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
   .muted{color:var(--muted)}
@@ -49,7 +49,7 @@
   .btn:hover{filter:brightness(1.05)}
   .btn.ghost{background:var(--brand-soft);color:var(--brand)}
   .btn.soft{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
-  .btn.sm{padding:6px 10px;font-size:13px}
+  .btn.sm{padding:7px 12px;font-size:13px;min-height:32px}
   .btn.danger{background:var(--bad-soft);color:var(--bad)}
   .btn.block{width:100%}
   .listitem{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
@@ -58,7 +58,7 @@
   .listitem .sub{font-size:12px;color:var(--muted)}
   .amt{font-weight:800;font-variant-numeric:tabular-nums}
   .amt.over{color:var(--bad)} .amt.under{color:var(--good)}
-  .amt.exp{color:var(--bad)} .amt.inc{color:var(--good)}
+  .amt.exp{color:var(--bad)} .amt.inc{color:var(--good)} .amt.sav{color:var(--save)}
   .btn.exp{background:var(--bad-soft);color:var(--bad)} .btn.exp.solid{background:var(--bad);color:#fff}
   .btn.inc{background:var(--good-soft);color:var(--good)} .btn.inc.solid{background:var(--good);color:#fff}
   .sec-h.hexp{color:var(--bad)} .sec-h.hinc{color:var(--good)}
@@ -69,24 +69,31 @@
   .tabs button.on{color:var(--brand)}
   .hide{display:none!important}
   .empty{text-align:center;color:var(--muted);padding:16px 6px;font-size:14px}
-  .syncbar{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:700;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-bottom:12px;cursor:pointer}
+  .syncbar{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:700;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:10px;padding:5px 10px;margin-bottom:12px;cursor:pointer}
   .syncbar.ok{color:var(--good)} .syncbar.err{color:var(--bad)} .syncbar.busy{color:var(--brand)}
   .fld-btn-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   /* calendar */
   .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-  .cal .dow{text-align:center;font-size:12px;font-weight:800;color:var(--muted);padding:2px 0}
-  .cal .cell{min-height:76px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:4px;display:flex;flex-direction:column;gap:2px;cursor:pointer;overflow:hidden}
+  .cal .dow{text-align:center;font-size:13px;font-weight:800;color:var(--muted);padding:4px 0}
+  .cal .cell{min-height:104px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-direction:column;gap:3px;cursor:pointer;overflow:hidden}
   .cal .cell:hover{border-color:var(--brand)}
   .cal .cell.blank{background:transparent;border:none;min-height:0;cursor:default}
-  .cal .cell.today{border-color:var(--brand);box-shadow:0 0 0 1.5px var(--brand)}
+  .cal .cell.today{border-color:var(--brand);box-shadow:0 0 0 1.5px var(--brand);background:var(--brand-soft)}
   .cal .cell.over{border-color:var(--bad);box-shadow:0 0 0 1.5px var(--bad)}
-  .cal .cell .dn{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800}
-  .cal .cell .dn .gg{font-size:9px;color:var(--muted);font-weight:600}
+  .cal .cell .dn{display:flex;justify-content:space-between;align-items:center;font-size:15px;font-weight:800}
+  .cal .cell .dn .gg{font-size:10px;color:var(--muted);font-weight:600}
   .cal .cell .ln{font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cal .cell .ln.plan{color:var(--warn)}
   .cal .cell .ln.rep{color:var(--bad)}
   .cal .cell .ln.rep.over{color:var(--bad)}
   .cal .cell .ln.inc{color:var(--good)}
+  .cal .cell .ln.sav{color:var(--save)}
+  .cal .cell .ev{font-size:10px;font-weight:700;color:var(--brand);background:var(--brand-soft);border-radius:4px;padding:1px 3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+  .cal .cell .cnum{font-size:15px;font-weight:800;color:var(--bad);line-height:1.15;margin-top:2px}
+  .cal .cell .cnum.plan{color:var(--muted);font-weight:700}
+  .cal .cell .dots{display:flex;gap:3px;flex-wrap:wrap;margin-top:auto;padding-top:3px}
+  .cal .cell .d{width:8px;height:8px;border-radius:50%;display:inline-block;flex:0 0 auto}
+  .cal .cell .d.dp{background:var(--warn)} .cal .cell .d.ds{background:var(--save)} .cal .cell .d.di{background:var(--good)} .cal .cell .d.de{background:var(--brand)}
   .legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;font-size:11px;color:var(--muted);font-weight:600}
   .legend span b{font-weight:800}
   /* modal */
@@ -115,10 +122,11 @@
   .toast.show{opacity:1}
   @media(max-width:560px){
     .cal{gap:2px}
-    .cal .cell{min-height:62px;padding:2px;border-radius:7px}
-    .cal .cell .dn{font-size:11px}
-    .cal .cell .dn .gg{display:none}
-    .cal .cell .ln{font-size:9px}
+    .cal .cell{min-height:86px;padding:4px;border-radius:9px}
+    .cal .cell .dn{font-size:13px}
+    .cal .cell .dn .gg{font-size:9px}
+    .cal .cell .ln{font-size:10px}
+    .cal .cell .cnum{font-size:13px}
     .miniform .g3{grid-template-columns:1fr 1fr}
   }
 </style>
@@ -141,9 +149,11 @@
     <div class="card">
       <h2>📅 לוח החודש</h2>
       <div class="legend">
-        <span><b style="color:var(--brand)">מ׳</b> = מתוכנן</span>
-        <span><b style="color:var(--good)">ב׳</b> = בפועל</span>
-        <span><b style="color:var(--bad)">מסגרת אדומה</b> = חריגה</span>
+        <span style="color:var(--bad);font-weight:800">מספר = הוצאה בפועל</span>
+        <span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--warn);vertical-align:middle"></i> מתוכנן</span>
+        <span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--save);vertical-align:middle"></i> חיסכון</span>
+        <span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--good);vertical-align:middle"></i> הכנסה</span>
+        <span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--brand);vertical-align:middle"></i> אירוע</span>
       </div>
       <div class="cal" id="calGrid"></div>
       <div class="muted" style="font-size:12px;margin-top:10px">לחיצה על יום פותחת את כרטיס היום — לתכנון ולדיווח הוצאות.</div>
@@ -246,8 +256,8 @@
     <div class="card" style="text-align:center">
       <h2 style="justify-content:center">🏠 חיסכון לבית</h2>
       <div class="muted" style="font-size:13px">סה״כ נצבר עד כה</div>
-      <div style="font-size:34px;font-weight:800;color:var(--brand);letter-spacing:-1px" id="savTotal">₪0</div>
-      <div style="height:14px;border-radius:99px;background:var(--line);overflow:hidden;margin:14px 0 8px"><span id="savBar" style="display:block;height:100%;border-radius:99px;background:var(--good);width:0%"></span></div>
+      <div style="font-size:34px;font-weight:800;color:var(--save);letter-spacing:-1px" id="savTotal">₪0</div>
+      <div style="height:14px;border-radius:99px;background:var(--line);overflow:hidden;margin:14px 0 8px"><span id="savBar" style="display:block;height:100%;border-radius:99px;background:var(--save);width:0%"></span></div>
       <div class="row" style="justify-content:space-between;font-size:13px;font-weight:700">
         <span id="savPct" class="muted">0% מהיעד</span>
         <span class="muted">יעד: ₪50,000</span>
@@ -345,9 +355,10 @@ function prevHMonth(y,m){const last=lastMonthOfHYear(y);if(m===7)return {y:y-1,m
 /* ---- state ---- */
 let db=load();
 let view=(function(){const t=hebToday();return {y:t.year,m:t.month};})();
+let swipeLock=false;
 let modalFixed=null;
 
-function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r){r.plans=r.plans||[];r.reports=r.reports||[];r.months=r.months||{};r.plans.forEach(p=>{if(!p.flow)p.flow="out";});r.reports.forEach(x=>{if(!x.flow)x.flow="out";});return r;}}catch(e){}return {months:{},plans:[],reports:[]};}
+function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r){r.plans=r.plans||[];r.reports=r.reports||[];r.months=r.months||{};r.events=r.events||[];r.plans.forEach(p=>{if(!p.flow)p.flow="out";});r.reports.forEach(x=>{if(!x.flow)x.flow="out";});return r;}}catch(e){}return {months:{},plans:[],reports:[],events:[]};}
 function save(){db.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(db));if(typeof queueSync==="function")queueSync();}
 function uid(){return Math.random().toString(36).slice(2,9);}
 function hKey(y,m){return "H"+y+"-"+m;}
@@ -402,7 +413,7 @@ function rowsHTML(items,kind){
   let s="";
   items.forEach(x=>{
     if(kind==="plan") s+='<div class="rowline"><div><div class="nm">'+esc(x.name)+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt '+(x.flow==="in"?"inc":"exp")+'">'+money(x.amount)+'</span><button class="btn sm soft" data-editplan="'+x.id+'">✎</button></div></div>';
-    else{const ll=linkLabelFor(x);s+='<div class="rowline"><div><div class="nm">'+esc(x.name)+'</div><div class="sub">'+esc(ll.label)+esc(ll.extra)+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt '+(x.flow==="in"?"inc":"exp")+'">'+money(x.amount)+'</span><button class="btn sm soft" data-editrep="'+x.id+'">✎</button></div></div>';}
+    else{const ll=linkLabelFor(x);s+='<div class="rowline"><div><div class="nm">'+esc(x.name)+'</div><div class="sub">'+esc(ll.label)+esc(ll.extra)+'</div></div><div style="display:flex;gap:8px;align-items:center"><span class="amt '+(x.flow==="in"?"inc":(x.planId==="SAVINGS"?"sav":"exp"))+'">'+money(x.amount)+'</span><button class="btn sm soft" data-editrep="'+x.id+'">✎</button></div></div>';}
   });
   return s;
 }
@@ -457,16 +468,25 @@ function renderCalendar(){
   for(let d=1;d<=ld;d++){
     const f=start+d-1;
     const g=gregFromFixed(f);
-    const pSum=sum(plansOn(f).filter(p=>p.flow!=="in")), rSum=sum(reportsOn(f).filter(r=>r.flow!=="in")), iSum=sum(reportsOn(f).filter(r=>r.flow==="in"));
+    const pSum=sum(plansOn(f).filter(p=>p.flow!=="in"));
+    const rSum=sum(reportsOn(f).filter(r=>r.flow!=="in"&&r.planId!=="SAVINGS"));
+    const sSum=sum(reportsOn(f).filter(r=>r.planId==="SAVINGS"));
+    const iSum=sum(reportsOn(f).filter(r=>r.flow==="in"));
     const over=rSum>0 && pSum>0 && rSum>pSum;
     const cell=document.createElement("div");
     cell.className="cell"+(f===tf?" today":"")+(over?" over":"");
+    const evs=eventsOn(f);
     let html='<div class="dn"><span>'+heDay(d)+'</span><span class="gg">'+g.day+'/'+g.month+'</span></div>';
-    if(pSum>0) html+='<div class="ln plan">מ׳ '+money(pSum)+'</div>';
-    if(rSum>0) html+='<div class="ln rep'+(over?' over':'')+'">ב׳ '+money(rSum)+'</div>';
-    if(iSum>0) html+='<div class="ln inc">＋ '+money(iSum)+'</div>';
+    if(rSum>0) html+='<div class="cnum">'+money(rSum)+'</div>';
+    else if(pSum>0) html+='<div class="cnum plan">'+money(pSum)+'</div>';
+    let dots="";
+    if(pSum>0&&rSum>0) dots+='<i class="d dp"></i>';
+    if(sSum>0) dots+='<i class="d ds"></i>';
+    if(iSum>0) dots+='<i class="d di"></i>';
+    if(evs.length) dots+='<i class="d de"></i>';
+    if(dots) html+='<div class="dots">'+dots+'</div>';
     cell.innerHTML=html;
-    cell.onclick=()=>openDay(f);
+    cell.onclick=()=>{ if(swipeLock) return; openDay(f); };
     grid.appendChild(cell);
   }
 }
@@ -506,12 +526,60 @@ function readDateSelects(idp){
 /* ---- modal ---- */
 function closeModal(){modalFixed=null;$("#modalRoot").innerHTML="";}
 function openDay(f){modalFixed=f;renderDayCard();}
+function eventsOn(f){return db.events.filter(e=>e.fixed===f).sort((a,b)=>(a.time||"99").localeCompare(b.time||"99"));}
+function eventRows(evs){
+  if(!evs.length) return '<div class="empty">אין אירועים ליום זה</div>';
+  let s="";
+  evs.forEach(e=>{ s+='<div class="rowline"><div><div class="nm">'+(e.time?'<span style="color:var(--brand)">'+esc(e.time)+'</span> ':'')+esc(e.name)+'</div>'+(e.note?'<div class="sub">'+esc(e.note)+'</div>':'')+'</div><button class="btn sm soft" data-editev="'+e.id+'">✎</button></div>'; });
+  return s;
+}
+function dayEventForm(){
+  $("#dayForm").innerHTML='<div class="miniform"><div class="sec-h" style="margin-top:0">אירוע חדש</div><div class="g2"><div><label class="fld">כותרת</label><input id="evName" placeholder="למשל: פגישה"></div><div><label class="fld">שעה</label><input id="evTime" type="time"></div></div><label class="fld">הערה (לא חובה)</label><input id="evNote" placeholder=""><label class="fld">תזכורת ביומן</label><select id="evRemind"><option value="">ללא</option><option value="0">בזמן האירוע</option><option value="10">10 דק׳ לפני</option><option value="30">30 דק׳ לפני</option><option value="60">שעה לפני</option><option value="1440">יום לפני</option></select><button class="btn block" id="evSave">שמור אירוע</button></div>';
+  $("#evName").focus();
+  $("#evSave").onclick=()=>{
+    const name=$("#evName").value.trim(); if(!name){toast("הזן כותרת");return;}
+    const H=hebrewFromFixed(modalFixed);
+    db.events.push({id:uid(),name,hy:H.year,hm:H.month,hd:H.day,fixed:modalFixed,time:$("#evTime").value||"",note:$("#evNote").value.trim(),remind:$("#evRemind").value});
+    save();toast("אירוע נוסף ✓");render();renderDayCard();
+  };
+}
+function pad2(n){return String(n).padStart(2,"0");}
+function icsEsc(s){return String(s||"").replace(/([,;\\])/g,"\\$1").replace(/\n/g," ");}
+function downloadIcs(e){
+  const g=gregFromFixed(e.fixed), t=(e.time||"09:00").split(":");
+  const dt=g.year+pad2(g.month)+pad2(g.day)+"T"+pad2(+t[0]||9)+pad2(+t[1]||0)+"00";
+  let ics="BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//yaadim//he\r\nBEGIN:VEVENT\r\nUID:"+e.id+"@yaadim\r\nDTSTART:"+dt+"\r\nDURATION:PT1H\r\nSUMMARY:"+icsEsc(e.name)+"\r\n";
+  if(e.note) ics+="DESCRIPTION:"+icsEsc(e.note)+"\r\n";
+  if(e.remind!==""&&e.remind!=null) ics+="BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT"+(e.remind||0)+"M\r\nDESCRIPTION:"+icsEsc(e.name)+"\r\nEND:VALARM\r\n";
+  ics+="END:VEVENT\r\nEND:VCALENDAR";
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"})); a.download=(e.name||"event")+".ics"; a.click();
+  toast("קובץ יומן נוצר");
+}
+function editEvent(id){
+  const e=db.events.find(x=>x.id===id); if(!e) return;
+  const fromDay=modalFixed;
+  const rem=[["","ללא"],["0","בזמן האירוע"],["10","10 דק׳ לפני"],["30","30 דק׳ לפני"],["60","שעה לפני"],["1440","יום לפני"]].map(o=>'<option value="'+o[0]+'"'+((e.remind||"")===o[0]?" selected":"")+'>'+o[1]+'</option>').join("");
+  const html='<div class="modal"><div class="sheet"><div class="mhead"><span class="mt">עריכת אירוע</span><button class="mc" id="mClose">✕</button></div><div class="miniform"><div class="g2"><div><label class="fld">כותרת</label><input id="evName" value="'+esc(e.name)+'"></div><div><label class="fld">שעה</label><input id="evTime" type="time" value="'+esc(e.time||"")+'"></div></div><label class="fld">הערה</label><input id="evNote" value="'+esc(e.note||"")+'"><label class="fld">תזכורת ביומן</label><select id="evRemind">'+rem+'</select><label class="fld" style="margin-top:2px">תאריך (אפשר להזיז)</label>'+dateSelectsHTML(e.hy,e.hm,e.hd,"evd")+'<div class="row" style="margin-top:6px"><button class="btn" id="evSave">שמור</button><button class="btn soft" id="evIcs">📤 ליומן</button><button class="btn danger" id="evDel">מחק</button></div></div></div></div>';
+  $("#modalRoot").innerHTML=html;
+  $("#mClose").onclick=()=>backFromEdit(fromDay);
+  $(".modal").onclick=(ev)=>{if(ev.target.classList.contains("modal"))backFromEdit(fromDay);};
+  $("#evSave").onclick=()=>{
+    e.name=$("#evName").value.trim()||e.name; e.time=$("#evTime").value||""; e.note=$("#evNote").value.trim(); e.remind=$("#evRemind").value;
+    const dt=readDateSelects("evd"); e.hy=dt.hy;e.hm=dt.hm;e.hd=dt.hd;e.fixed=dt.fixed;
+    save();toast("עודכן ✓");render();backFromEdit(fromDay);
+  };
+  $("#evIcs").onclick=()=>downloadIcs(e);
+  $("#evDel").onclick=()=>{ db.events=db.events.filter(x=>x.id!==e.id); save();toast("נמחק");render();backFromEdit(fromDay); };
+}
 function renderDayCard(){
   const f=modalFixed;const H=hebrewFromFixed(f);const hy=H.year,hm=H.month,hd=H.day;const g=gregFromFixed(f);
   const eP=plansOn(f).filter(p=>p.flow!=="in"), eR=reportsOn(f).filter(r=>r.flow!=="in");
   const iP=plansOn(f).filter(p=>p.flow==="in"), iR=reportsOn(f).filter(r=>r.flow==="in");
   const html='<div class="modal"><div class="sheet">'+
     '<div class="mhead"><span class="mt">יום '+DAYS[weekdayOf(f)]+' · '+heDay(hd)+' '+hebMonthName(hy,hm)+' '+heYear(hy)+'<br><span class="muted" style="font-size:12px;font-weight:600">'+g.day+'/'+g.month+'/'+g.year+'</span></span><button class="mc" id="mClose">✕</button></div>'+
+    '<div class="sec-h" style="color:var(--brand)">🗓️ אירועים ולו״ז</div>'+eventRows(eventsOn(f))+
+    '<div class="row" style="margin-top:8px"><button class="btn ghost sm" id="btnAddEv">＋ הוסף אירוע</button></div>'+
+    '<hr style="border:none;border-top:1px solid var(--line);margin:16px 0">'+
     '<div class="sec-h hexp">💸 הוצאות מתוכננות</div>'+rowsHTML(eP,"plan")+
     '<div class="sec-h hexp">הוצאות שדווחו</div>'+rowsHTML(eR,"rep")+
     '<div class="row" style="margin-top:10px"><button class="btn exp sm" id="btnPlanExp">＋ תכנון הוצאה</button><button class="btn exp solid sm" id="btnRepExp">＋ דיווח הוצאה</button></div>'+
@@ -530,6 +598,8 @@ function renderDayCard(){
   $("#btnRepInc").onclick=()=>dayReportForm("in");
   document.querySelectorAll("[data-editplan]").forEach(b=>b.onclick=()=>editPlan(b.getAttribute("data-editplan")));
   document.querySelectorAll("[data-editrep]").forEach(b=>b.onclick=()=>editReport(b.getAttribute("data-editrep")));
+  $("#btnAddEv").onclick=()=>dayEventForm();
+  document.querySelectorAll("[data-editev]").forEach(b=>b.onclick=()=>editEvent(b.getAttribute("data-editev")));
 }
 
 /* ---- day card: add forms ---- */
@@ -654,7 +724,7 @@ function renderProgress(){
     const over=g.actual>g.planned; const remain=g.planned-g.actual;
     const el=document.createElement("div"); el.style.marginBottom="14px";
     el.innerHTML='<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>'+esc(g.name)+'</span><span>'+money(g.actual)+' / '+money(g.planned)+'</span></div>'+
-      '<div style="height:12px;border-radius:99px;background:var(--line);overflow:hidden;margin:6px 0"><span style="display:block;height:100%;border-radius:99px;background:'+(over?"var(--bad)":"var(--brand)")+';width:'+Math.min(pct,100)+'%"></span></div>'+
+      '<div style="height:12px;border-radius:99px;background:var(--line);overflow:hidden;margin:6px 0"><span style="display:block;height:100%;border-radius:99px;background:'+(g.kind==="savings"?"var(--save)":(over?"var(--bad)":"var(--brand)"))+';width:'+Math.min(pct,100)+'%"></span></div>'+
       '<div style="font-size:12px;font-weight:700;color:'+(over?"var(--bad)":"var(--good)")+'">'+(over?"חריגה: "+money(-remain):"יתרה: "+money(remain)+" ("+pct+"%)")+'</div>';
     box.appendChild(el);
   });
@@ -672,7 +742,7 @@ function renderSummary(){
       const over=g.actual>g.planned&&g.planned>0;
       let plannedCell=g.planned>0?money(g.planned):"—",diffCell="—",pctCell="—",cls="";
       if(g.planned>0){const diff=g.planned-g.actual;cls=over?"g-bad":"";diffCell=(diff<0?"-":"")+money(Math.abs(diff));pctCell=Math.round(g.actual/g.planned*100)+"%";}
-      rows+='<tr><td>'+esc(g.name)+'</td><td class="num">'+plannedCell+'</td><td class="num">'+money(g.actual)+'</td><td class="num '+cls+'">'+diffCell+'</td><td class="num '+cls+'">'+pctCell+'</td></tr>'; });
+      rows+='<tr><td'+(g.kind==="savings"?' style="color:var(--save)"':'')+'>'+esc(g.name)+'</td><td class="num">'+plannedCell+'</td><td class="num">'+money(g.actual)+'</td><td class="num '+cls+'">'+diffCell+'</td><td class="num '+cls+'">'+pctCell+'</td></tr>'; });
     const taAll=sum(expReports(view.y,view.m)),tdiff=tp-taAll;
     wrap.innerHTML='<table class="tbl"><thead><tr><th>הוצאה</th><th>מתוכנן</th><th>בפועל</th><th>הפרש</th><th>ניצול</th></tr></thead><tbody>'+rows+
       '<tr class="tot"><td>סה״כ</td><td class="num">'+money(tp)+'</td><td class="num">'+money(taAll)+'</td><td class="num '+(tdiff<0?"g-bad":"g-good")+'">'+(tdiff<0?"-":"")+money(Math.abs(tdiff))+'</td><td class="num">'+(tp>0?Math.round(taAll/tp*100):0)+'%</td></tr></tbody></table>';
@@ -748,10 +818,10 @@ $("#impBtn").onclick=()=>$("#impFile").click();
 $("#impFile").onchange=(e)=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
-  rd.onload=()=>{ try{ const o=JSON.parse(rd.result); if(!o.plans&&!o.reports){throw 0;} db={months:o.months||{},plans:o.plans||[],reports:o.reports||[]}; save();toast("יובא ✓");render(); }catch(_){ toast("קובץ לא תקין"); } };
+  rd.onload=()=>{ try{ const o=JSON.parse(rd.result); if(!o.plans&&!o.reports&&!o.events){throw 0;} db={months:o.months||{},plans:o.plans||[],reports:o.reports||[],events:o.events||[]}; save();toast("יובא ✓");render(); }catch(_){ toast("קובץ לא תקין"); } };
   rd.readAsText(f);
 };
-$("#resetBtn").onclick=()=>{ if(confirm("לאפס את כל הנתונים? פעולה בלתי הפיכה.")){ db={months:{},plans:[],reports:[]}; save();toast("אופס");render(); } };
+$("#resetBtn").onclick=()=>{ if(confirm("לאפס את כל הנתונים? פעולה בלתי הפיכה.")){ db={months:{},plans:[],reports:[],events:[]}; save();toast("אופס");render(); } };
 
 /* ---- tabs ---- */
 function showTab(t){
@@ -852,6 +922,20 @@ if(!db.plans.length && !db.reports.length && !Object.keys(db.months).length){
 $("#savTargetSave").onclick=()=>{ const v=parseFloat($("#savTargetInput").value); const k=hKey(view.y,view.m); db.months[k]=db.months[k]||{}; db.months[k].savingsTarget=isNaN(v)?0:v; save();toast("יעד חיסכון נשמר ✓");render(); };
 refreshInstallUI();
 render();
+(function(){
+  const el=$("#tab-cal"); if(!el) return;
+  let x0=null,y0=null;
+  el.addEventListener("touchstart",e=>{ if(document.querySelector(".modal")){x0=null;return;} if(e.touches.length===1){x0=e.touches[0].clientX;y0=e.touches[0].clientY;} },{passive:true});
+  el.addEventListener("touchend",e=>{
+    if(x0===null) return;
+    const t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0; x0=null;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.5){
+      swipeLock=true; setTimeout(()=>swipeLock=false,350);
+      view = dx<0 ? prevHMonth(view.y,view.m) : nextHMonth(view.y,view.m);
+      render();
+    }
+  },{passive:true});
+})();
 renderSyncUI();
 if(ghToken && ghGist){ reconcile(); window.addEventListener("focus",()=>reconcile()); setInterval(()=>{ if(!document.hidden) reconcile(); },60000); }
 </script>
