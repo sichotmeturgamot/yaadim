@@ -81,6 +81,17 @@
   .cal .cell .gs{width:11px;height:11px;border-radius:3px;border:1.5px solid var(--muted);cursor:pointer;flex:0 0 auto}
   .cal .cell .gs.on{background:var(--good);border-color:var(--good)}
   .cal .cell .gs.miss{border-color:var(--bad)}
+  .viewsw{display:flex;gap:6px;margin-bottom:12px}
+  .viewsw button{flex:1;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 4px;font-family:inherit;font-size:13px;font-weight:800;color:var(--muted);cursor:pointer}
+  .viewsw button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .cal.week .cell{min-height:132px}
+  .cal.compact{gap:2px}
+  .cal.compact .cell{min-height:40px;padding:2px;border-radius:6px}
+  .cal.compact .cell .gg,.cal.compact .cell .dots{display:none}
+  .cal.compact .cell .dn{font-size:11px}
+  .cal.compact .cell .cnum{font-size:10px;margin-top:0}
+  .tm-label{font-weight:800;font-size:15px;margin:14px 0 6px;color:var(--brand)}
+  .dv-head{text-align:center;font-weight:800;font-size:17px;margin-bottom:14px}
   .tabs{position:fixed;bottom:0;right:0;left:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:20}
   .tabs .inner{display:flex;max-width:860px;width:100%}
   .tabs button{flex:1;border:none;background:transparent;padding:10px 4px 12px;font-family:inherit;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
@@ -166,7 +177,13 @@
   <!-- ===== CALENDAR ===== -->
   <section id="tab-cal">
     <div class="card">
-      <h2>📅 לוח החודש</h2>
+      <h2>📅 לוח</h2>
+      <div class="viewsw" id="viewSw">
+        <button data-cv="day">יום</button>
+        <button data-cv="week">שבוע</button>
+        <button data-cv="month">חודש</button>
+        <button data-cv="3month">3 חודשים</button>
+      </div>
       <div class="legend">
         <span style="color:var(--bad);font-weight:800">מספר = הוצאה בפועל</span>
         <span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--warn);vertical-align:middle"></i> מתוכנן</span>
@@ -174,7 +191,7 @@
         <span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--good);vertical-align:middle"></i> הכנסה</span>
         <span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--brand);vertical-align:middle"></i> אירוע</span>
       </div>
-      <div class="cal" id="calGrid"></div>
+      <div id="calGrid"></div>
       <div class="muted" style="font-size:12px;margin-top:10px">לחיצה על יום פותחת את כרטיס היום — לתכנון ולדיווח הוצאות.</div>
     </div>
     <div class="card">
@@ -400,6 +417,9 @@ function prevHMonth(y,m){const last=lastMonthOfHYear(y);if(m===7)return {y:y-1,m
 let db=load();
 let view=(function(){const t=hebToday();return {y:t.year,m:t.month};})();
 let swipeLock=false;
+let calView=(db.calView||"month");
+let anchor=todayFixed();
+let activeDay=null, activeRerender=null;
 let modalFixed=null;
 
 function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r){r.plans=r.plans||[];r.reports=r.reports||[];r.months=r.months||{};r.events=r.events||[];r.goals=r.goals||[];r.goalChecks=r.goalChecks||{};r.plans.forEach(p=>{if(!p.flow)p.flow="out";});r.reports.forEach(x=>{if(!x.flow)x.flow="out";});return r;}}catch(e){}return {months:{},plans:[],reports:[],events:[],goals:[],goalChecks:{}};}
@@ -492,7 +512,6 @@ function renderSavings(){
 
 /* ---- rendering ---- */
 function render(){
-  $("#mLabel").textContent=monthLabel(view.y,view.m);
   renderCalendar();
   renderQuick();
   renderPlanning();
@@ -503,39 +522,116 @@ function render(){
   renderGoals();
 }
 
-function renderCalendar(){
-  const y=view.y,m=view.m;
-  const start=fixedFromHebrew(y,m,1),wd=weekdayOf(start),ld=lastDayOfHMonth(y,m);
-  const tf=todayFixed();
-  const grid=$("#calGrid");grid.innerHTML="";
-  ["א","ב","ג","ד","ה","ו","ש"].forEach(d=>{const h=document.createElement("div");h.className="dow";h.textContent=d;grid.appendChild(h);});
-  for(let i=0;i<wd;i++){const b=document.createElement("div");b.className="cell blank";grid.appendChild(b);}
-  for(let d=1;d<=ld;d++){
-    const f=start+d-1;
-    const g=gregFromFixed(f);
-    const pSum=sum(plansOn(f).filter(p=>p.flow!=="in"));
-    const rSum=sum(reportsOn(f).filter(r=>r.flow!=="in"&&r.planId!=="SAVINGS"));
-    const sSum=sum(reportsOn(f).filter(r=>r.planId==="SAVINGS"));
-    const iSum=sum(reportsOn(f).filter(r=>r.flow==="in"));
-    const over=rSum>0 && pSum>0 && rSum>pSum;
-    const cell=document.createElement("div");
-    cell.className="cell"+(f===tf?" today":"")+(over?" over":"");
-    const evs=eventsOn(f);
-    let html='<div class="dn"><span>'+heDay(d)+'</span><span class="gg">'+g.day+'/'+g.month+'</span></div>';
-    if(rSum>0) html+='<div class="cnum">'+money(rSum)+'</div>';
-    else if(pSum>0) html+='<div class="cnum plan">'+money(pSum)+'</div>';
-    let dots="";
-    if(pSum>0&&rSum>0) dots+='<i class="d dp"></i>';
-    if(sSum>0) dots+='<i class="d ds"></i>';
-    if(iSum>0) dots+='<i class="d di"></i>';
-    if(evs.length) dots+='<i class="d de"></i>';
-    if(dots) html+='<div class="dots">'+dots+'</div>';
-    html+=cellGoalSquares(f);
-    cell.innerHTML=html;
-    cell.onclick=()=>{ if(swipeLock) return; openDay(f); };
-    grid.appendChild(cell);
+function cellHTML(f,compact){
+  const H=hebrewFromFixed(f), g=gregFromFixed(f), tf=todayFixed();
+  const pSum=sum(plansOn(f).filter(p=>p.flow!=="in"));
+  const rSum=sum(reportsOn(f).filter(r=>r.flow!=="in"&&r.planId!=="SAVINGS"));
+  const sSum=sum(reportsOn(f).filter(r=>r.planId==="SAVINGS"));
+  const iSum=sum(reportsOn(f).filter(r=>r.flow==="in"));
+  const over=rSum>0&&pSum>0&&rSum>pSum, evs=eventsOn(f);
+  let html='<div class="dn"><span>'+heDay(H.day)+'</span><span class="gg">'+g.day+'/'+g.month+'</span></div>';
+  if(rSum>0) html+='<div class="cnum">'+money(rSum)+'</div>';
+  else if(pSum>0) html+='<div class="cnum plan">'+money(pSum)+'</div>';
+  let dots="";
+  if(!compact&&pSum>0&&rSum>0) dots+='<i class="d dp"></i>';
+  if(sSum>0) dots+='<i class="d ds"></i>';
+  if(iSum>0) dots+='<i class="d di"></i>';
+  if(evs.length) dots+='<i class="d de"></i>';
+  if(dots) html+='<div class="dots">'+dots+'</div>';
+  if(!compact) html+=cellGoalSquares(f);
+  return {html,over,today:f===tf};
+}
+function makeCell(f,compact){
+  const c=cellHTML(f,compact);
+  const cell=document.createElement("div");
+  cell.className="cell"+(c.today?" today":"")+(c.over?" over":"");
+  cell.innerHTML=c.html;
+  cell.onclick=()=>{ if(swipeLock) return; openDay(f); };
+  return cell;
+}
+function calGridEl(startFixed,numDays,leadBlanks,compact,extra){
+  const g=document.createElement("div"); g.className="cal"+(extra?" "+extra:"");
+  ["א","ב","ג","ד","ה","ו","ש"].forEach(x=>{const hd=document.createElement("div");hd.className="dow";hd.textContent=x;g.appendChild(hd);});
+  for(let i=0;i<leadBlanks;i++){const b=document.createElement("div");b.className="cell blank";g.appendChild(b);}
+  for(let i=0;i<numDays;i++) g.appendChild(makeCell(startFixed+i,compact));
+  return g;
+}
+function wireGoalSquares(host){ host.querySelectorAll("[data-gsq]").forEach(el=>el.onclick=(e)=>{ e.stopPropagation(); const p=el.getAttribute("data-gsq").split("|"); toggleCheck(p[0],+p[1]); render(); }); }
+function renderMonthGrid(){
+  const y=view.y,m=view.m,start=fixedFromHebrew(y,m,1),wd=weekdayOf(start),ld=lastDayOfHMonth(y,m);
+  const host=$("#calGrid"); host.className=""; host.innerHTML="";
+  host.appendChild(calGridEl(start,ld,wd,false)); wireGoalSquares(host);
+}
+function renderWeekView(){
+  const s=weekStartFixed(anchor);
+  const host=$("#calGrid"); host.className=""; host.innerHTML="";
+  host.appendChild(calGridEl(s,7,0,false,"week")); wireGoalSquares(host);
+}
+function renderThreeMonths(){
+  const host=$("#calGrid"); host.className="threem"; host.innerHTML="";
+  let ym={y:view.y,m:view.m};
+  for(let k=0;k<3;k++){
+    const lbl=document.createElement("div"); lbl.className="tm-label"; lbl.textContent=monthLabel(ym.y,ym.m); host.appendChild(lbl);
+    const start=fixedFromHebrew(ym.y,ym.m,1),wd=weekdayOf(start),ld=lastDayOfHMonth(ym.y,ym.m);
+    host.appendChild(calGridEl(start,ld,wd,true,"compact"));
+    ym=nextHMonth(ym.y,ym.m);
   }
-  grid.querySelectorAll("[data-gsq]").forEach(el=>el.onclick=(e)=>{ e.stopPropagation(); const p=el.getAttribute("data-gsq").split("|"); toggleCheck(p[0],+p[1]); render(); });
+  wireGoalSquares(host);
+}
+function dayContentHTML(f){
+  const eP=plansOn(f).filter(p=>p.flow!=="in"), eR=reportsOn(f).filter(r=>r.flow!=="in");
+  const iP=plansOn(f).filter(p=>p.flow==="in"), iR=reportsOn(f).filter(r=>r.flow==="in");
+  return '<div class="daygrp ev"><div class="gh">🗓️ אירועים ולו״ז</div>'+eventRows(eventsOn(f))+
+    '<div class="row" style="margin-top:8px"><button class="btn ghost sm" id="btnAddEv">＋ הוסף אירוע</button></div></div>'+
+    '<div class="daygrp goal"><div class="gh">🎯 יעדים</div>'+goalRows(f)+'</div>'+
+    '<div class="daygrp exp"><div class="gh">💸 הוצאות</div><div class="subh">מתוכנן</div>'+rowsHTML(eP,"plan")+'<div class="subh">דווח בפועל</div>'+rowsHTML(eR,"rep")+
+    '<div class="row" style="margin-top:10px"><button class="btn exp sm" id="btnPlanExp">＋ תכנון הוצאה</button><button class="btn exp solid sm" id="btnRepExp">＋ דיווח הוצאה</button></div></div>'+
+    '<div class="daygrp inc"><div class="gh">💰 הכנסות</div><div class="subh">מתוכנן</div>'+rowsHTML(iP,"plan")+'<div class="subh">דווח בפועל</div>'+rowsHTML(iR,"rep")+
+    '<div class="row" style="margin-top:10px"><button class="btn inc sm" id="btnPlanInc">＋ תכנון הכנסה</button><button class="btn inc solid sm" id="btnRepInc">＋ דיווח הכנסה</button></div></div>'+
+    '<div id="dayForm"></div>';
+}
+function wireDay(){
+  let b;
+  if(b=$("#btnAddEv")) b.onclick=()=>dayEventForm();
+  if(b=$("#btnPlanExp")) b.onclick=()=>dayPlanForm("out");
+  if(b=$("#btnRepExp")) b.onclick=()=>dayReportForm("out");
+  if(b=$("#btnPlanInc")) b.onclick=()=>dayPlanForm("in");
+  if(b=$("#btnRepInc")) b.onclick=()=>dayReportForm("in");
+  document.querySelectorAll("[data-editplan]").forEach(x=>x.onclick=()=>editPlan(x.getAttribute("data-editplan")));
+  document.querySelectorAll("[data-editrep]").forEach(x=>x.onclick=()=>editReport(x.getAttribute("data-editrep")));
+  document.querySelectorAll("[data-editev]").forEach(x=>x.onclick=()=>editEvent(x.getAttribute("data-editev")));
+  document.querySelectorAll("[data-gck]").forEach(cb=>cb.onchange=()=>{ toggleCheck(cb.getAttribute("data-gck"), activeDay); render(); activeRerender(); });
+}
+function renderDayView(){
+  modalFixed=null; activeDay=anchor; activeRerender=renderDayView;
+  const f=anchor,H=hebrewFromFixed(f),g=gregFromFixed(f);
+  const host=$("#calGrid"); host.className="dayview";
+  host.innerHTML='<div class="dv-head">'+heDay(H.day)+' '+hebMonthName(H.year,H.month)+' '+heYear(H.year)+' · יום '+DAYS[weekdayOf(f)]+'<div class="muted" style="font-size:12px;font-weight:600">'+g.day+'/'+g.month+'/'+g.year+'</div></div>'+dayContentHTML(f);
+  wireDay();
+}
+function updateLabel(){
+  let t;
+  if(calView==="day"){const H=hebrewFromFixed(anchor);t="יום "+DAYS[weekdayOf(anchor)]+" · "+heDay(H.day)+" "+hebMonthName(H.year,H.month);}
+  else if(calView==="week"){const s=weekStartFixed(anchor),e=s+6,HS=hebrewFromFixed(s),HE=hebrewFromFixed(e);t=heDay(HS.day)+"–"+heDay(HE.day)+" "+hebMonthName(HE.year,HE.month);}
+  else if(calView==="3month"){const m2=nextHMonth(view.y,view.m),m3=nextHMonth(m2.y,m2.m);t=hebMonthName(view.y,view.m)+"–"+hebMonthName(m3.y,m3.m);}
+  else t=monthLabel(view.y,view.m);
+  $("#mLabel").textContent=t;
+}
+function updateViewSwitcher(){ document.querySelectorAll("#viewSw button").forEach(b=>b.classList.toggle("on",b.dataset.cv===calView)); }
+function syncViewFromAnchor(){ const H=hebrewFromFixed(anchor); view={y:H.year,m:H.month}; }
+function navCal(dir){
+  if(calView==="day"){ anchor+=dir; syncViewFromAnchor(); }
+  else if(calView==="week"){ anchor+=dir*7; syncViewFromAnchor(); }
+  else if(calView==="3month"){ for(let i=0;i<3;i++) view=dir<0?prevHMonth(view.y,view.m):nextHMonth(view.y,view.m); anchor=fixedFromHebrew(view.y,view.m,1); }
+  else { view=dir<0?prevHMonth(view.y,view.m):nextHMonth(view.y,view.m); anchor=fixedFromHebrew(view.y,view.m,1); }
+  render();
+}
+function renderCalendar(){
+  updateViewSwitcher(); updateLabel();
+  if(calView==="day") renderDayView();
+  else if(calView==="week") renderWeekView();
+  else if(calView==="3month") renderThreeMonths();
+  else renderMonthGrid();
 }
 
 function renderQuick(){
@@ -585,9 +681,9 @@ function dayEventForm(){
   $("#evName").focus();
   $("#evSave").onclick=()=>{
     const name=$("#evName").value.trim(); if(!name){toast("הזן כותרת");return;}
-    const H=hebrewFromFixed(modalFixed);
-    db.events.push({id:uid(),name,hy:H.year,hm:H.month,hd:H.day,fixed:modalFixed,time:$("#evTime").value||"",note:$("#evNote").value.trim(),remind:$("#evRemind").value});
-    save();toast("אירוע נוסף ✓");render();renderDayCard();
+    const H=hebrewFromFixed(activeDay);
+    db.events.push({id:uid(),name,hy:H.year,hm:H.month,hd:H.day,fixed:activeDay,time:$("#evTime").value||"",note:$("#evNote").value.trim(),remind:$("#evRemind").value});
+    save();toast("אירוע נוסף ✓");render();activeRerender();
   };
 }
 function pad2(n){return String(n).padStart(2,"0");}
@@ -682,36 +778,16 @@ function editGoal(id){
   $("#egDel").onclick=()=>{ db.goals=db.goals.filter(x=>x.id!==g.id); Object.keys(db.goalChecks).forEach(k=>{if(k.indexOf(g.id+"@")===0)delete db.goalChecks[k];}); save();toast("נמחק");render();closeModal(); };
 }
 function renderDayCard(){
-  const f=modalFixed;const H=hebrewFromFixed(f);const hy=H.year,hm=H.month,hd=H.day;const g=gregFromFixed(f);
-  const eP=plansOn(f).filter(p=>p.flow!=="in"), eR=reportsOn(f).filter(r=>r.flow!=="in");
-  const iP=plansOn(f).filter(p=>p.flow==="in"), iR=reportsOn(f).filter(r=>r.flow==="in");
+  const f=modalFixed;const H=hebrewFromFixed(f);const g=gregFromFixed(f);
+  activeDay=f; activeRerender=renderDayCard;
   const html='<div class="modal"><div class="sheet">'+
-    '<div class="mhead"><span class="mt">יום '+DAYS[weekdayOf(f)]+' · '+heDay(hd)+' '+hebMonthName(hy,hm)+' '+heYear(hy)+'<br><span class="muted" style="font-size:12px;font-weight:600">'+g.day+'/'+g.month+'/'+g.year+'</span></span><button class="mc" id="mClose">✕</button></div>'+
-    '<div class="daygrp ev"><div class="gh">🗓️ אירועים ולו״ז</div>'+eventRows(eventsOn(f))+
-      '<div class="row" style="margin-top:8px"><button class="btn ghost sm" id="btnAddEv">＋ הוסף אירוע</button></div></div>'+
-    '<div class="daygrp goal"><div class="gh">🎯 יעדים</div>'+goalRows(f)+'</div>'+
-    '<div class="daygrp exp"><div class="gh">💸 הוצאות</div>'+
-      '<div class="subh">מתוכנן</div>'+rowsHTML(eP,"plan")+
-      '<div class="subh">דווח בפועל</div>'+rowsHTML(eR,"rep")+
-      '<div class="row" style="margin-top:10px"><button class="btn exp sm" id="btnPlanExp">＋ תכנון הוצאה</button><button class="btn exp solid sm" id="btnRepExp">＋ דיווח הוצאה</button></div></div>'+
-    '<div class="daygrp inc"><div class="gh">💰 הכנסות</div>'+
-      '<div class="subh">מתוכנן</div>'+rowsHTML(iP,"plan")+
-      '<div class="subh">דווח בפועל</div>'+rowsHTML(iR,"rep")+
-      '<div class="row" style="margin-top:10px"><button class="btn inc sm" id="btnPlanInc">＋ תכנון הכנסה</button><button class="btn inc solid sm" id="btnRepInc">＋ דיווח הכנסה</button></div></div>'+
-    '<div id="dayForm"></div>'+
+    '<div class="mhead"><span class="mt">יום '+DAYS[weekdayOf(f)]+' · '+heDay(H.day)+' '+hebMonthName(H.year,H.month)+' '+heYear(H.year)+'<br><span class="muted" style="font-size:12px;font-weight:600">'+g.day+'/'+g.month+'/'+g.year+'</span></span><button class="mc" id="mClose">✕</button></div>'+
+    dayContentHTML(f)+
     '</div></div>';
   $("#modalRoot").innerHTML=html;
   $("#mClose").onclick=closeModal;
   $(".modal").onclick=(e)=>{if(e.target.classList.contains("modal"))closeModal();};
-  $("#btnPlanExp").onclick=()=>dayPlanForm("out");
-  $("#btnRepExp").onclick=()=>dayReportForm("out");
-  $("#btnPlanInc").onclick=()=>dayPlanForm("in");
-  $("#btnRepInc").onclick=()=>dayReportForm("in");
-  document.querySelectorAll("[data-editplan]").forEach(b=>b.onclick=()=>editPlan(b.getAttribute("data-editplan")));
-  document.querySelectorAll("[data-editrep]").forEach(b=>b.onclick=()=>editReport(b.getAttribute("data-editrep")));
-  $("#btnAddEv").onclick=()=>dayEventForm();
-  document.querySelectorAll("[data-editev]").forEach(b=>b.onclick=()=>editEvent(b.getAttribute("data-editev")));
-  document.querySelectorAll("[data-gck]").forEach(cb=>cb.onchange=()=>{ toggleCheck(cb.getAttribute("data-gck"), modalFixed); render(); renderDayCard(); });
+  wireDay();
 }
 
 /* ---- day card: add forms ---- */
@@ -722,22 +798,22 @@ function dayPlanForm(flow){
   $("#dpSave").onclick=()=>{
     const name=$("#dpName").value.trim(), amt=parseFloat($("#dpAmt").value);
     if(!name){toast("הזן תיאור");return;} if(isNaN(amt)){toast("הזן סכום");return;}
-    const h=hebrewFromFixed(modalFixed);
-    db.plans.push({id:uid(),name,amount:amt,hy:h.year,hm:h.month,hd:h.day,fixed:modalFixed,origin:"day",flow:isInc?"in":"out"});
-    save();toast("נוסף ✓");render();renderDayCard();
+    const h=hebrewFromFixed(activeDay);
+    db.plans.push({id:uid(),name,amount:amt,hy:h.year,hm:h.month,hd:h.day,fixed:activeDay,origin:"day",flow:isInc?"in":"out"});
+    save();toast("נוסף ✓");render();activeRerender();
   };
 }
 function dayReportForm(flow){
   const isInc=flow==="in";
-  let opt=linkOptionsHTML(modalFixed,"",isInc?"in":"out");
+  let opt=linkOptionsHTML(activeDay,"",isInc?"in":"out");
   $("#dayForm").innerHTML='<div class="miniform"><div class="sec-h" style="margin-top:0">'+(isInc?"דיווח הכנסה":"דיווח הוצאה")+'</div><div class="g2"><div><label class="fld">תיאור</label><input id="drName" placeholder="תיאור"></div><div><label class="fld">סכום (₪)</label><input id="drAmt" type="number" inputmode="decimal" placeholder="0"></div></div><label class="fld">שייך לתכנון</label><select id="drLink">'+opt+'</select><button class="btn block" id="drSave">שמור</button></div>';
   $("#drLink").onchange=()=>{const p=db.plans.find(x=>x.id===$("#drLink").value);if(p){if(!$("#drName").value)$("#drName").value=p.name;if(!$("#drAmt").value)$("#drAmt").value=p.amount;}};
   $("#drSave").onclick=()=>{
     const name=$("#drName").value.trim(), amt=parseFloat($("#drAmt").value);
     if(!name){toast("הזן תיאור");return;} if(isNaN(amt)){toast("הזן סכום");return;}
-    const h=hebrewFromFixed(modalFixed);
-    db.reports.push({id:uid(),name,amount:amt,hy:h.year,hm:h.month,hd:h.day,fixed:modalFixed,planId:$("#drLink").value||null,flow:isInc?"in":"out"});
-    save();toast("דווח ✓");render();renderDayCard();
+    const h=hebrewFromFixed(activeDay);
+    db.reports.push({id:uid(),name,amount:amt,hy:h.year,hm:h.month,hd:h.day,fixed:activeDay,planId:$("#drLink").value||null,flow:isInc?"in":"out"});
+    save();toast("דווח ✓");render();activeRerender();
   };
 }
 
@@ -870,8 +946,8 @@ function renderSummary(){
 }
 
 /* ---- events ---- */
-$("#mPrev").onclick=()=>{ view=prevHMonth(view.y,view.m); render(); };
-$("#mNext").onclick=()=>{ view=nextHMonth(view.y,view.m); render(); };
+$("#mPrev").onclick=()=>navCal(-1);
+$("#mNext").onclick=()=>navCal(1);
 
 $("#incSave").onclick=()=>{
   const v=parseFloat($("#incInput").value);
@@ -942,6 +1018,7 @@ function showTab(t){
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+document.querySelectorAll("#viewSw button").forEach(b=>b.onclick=()=>{ calView=b.dataset.cv; db.calView=calView; save(); render(); });
 
 let toastT;
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1600); }
@@ -1057,8 +1134,7 @@ if($("#glAdd")) $("#glAdd").onclick=()=>{
     const t=e.changedTouches[0], dx=t.clientX-x0, dy=t.clientY-y0; x0=null;
     if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)*1.5){
       swipeLock=true; setTimeout(()=>swipeLock=false,350);
-      view = dx<0 ? prevHMonth(view.y,view.m) : nextHMonth(view.y,view.m);
-      render();
+      navCal(dx<0?-1:1);
     }
   },{passive:true});
 })();
