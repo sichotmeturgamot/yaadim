@@ -70,6 +70,17 @@
   .daygrp.ev .gh{color:var(--brand)} .daygrp.exp .gh{color:var(--bad)} .daygrp.inc .gh{color:var(--good)}
   .daygrp .subh{font-size:12px;font-weight:800;color:var(--muted);margin:10px 0 2px}
   .daygrp .rowline{border-bottom-color:rgba(0,0,0,.06)}
+  .daygrp.goal{background:#fffaf0;border-color:#ffe3a3}
+  .daygrp.goal .gh{color:#c47f0a}
+  .gck{position:relative;display:inline-flex;cursor:pointer;flex:0 0 auto}
+  .gck input{position:absolute;opacity:0;width:0;height:0}
+  .gck .box{width:26px;height:26px;border:2px solid var(--line);border-radius:8px;background:#fff;transition:.15s}
+  .gck input:checked + .box{background:var(--good);border-color:var(--good)}
+  .gck input:checked + .box::after{content:"✓";color:#fff;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;height:100%}
+  .cal .cell .gsq{display:flex;gap:2px;flex-wrap:wrap;margin-top:2px}
+  .cal .cell .gs{width:11px;height:11px;border-radius:3px;border:1.5px solid var(--muted);cursor:pointer;flex:0 0 auto}
+  .cal .cell .gs.on{background:var(--good);border-color:var(--good)}
+  .cal .cell .gs.miss{border-color:var(--bad)}
   .tabs{position:fixed;bottom:0;right:0;left:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:20}
   .tabs .inner{display:flex;max-width:860px;width:100%}
   .tabs button{flex:1;border:none;background:transparent;padding:10px 4px 12px;font-family:inherit;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
@@ -259,6 +270,30 @@
     </div>
   </section>
 
+  <!-- ===== GOALS ===== -->
+  <section id="tab-goals" class="hide">
+    <div class="card">
+      <h2>🎯 יעד חדש</h2>
+      <label class="fld">שם היעד</label>
+      <input id="glName" placeholder="למשל: ללכת לטיול">
+      <label class="fld" style="margin-top:8px">סוג</label>
+      <select id="glType">
+        <option value="daily">יומי — משימה ליום מסוים</option>
+        <option value="weekly">שבועי — מספר ימים בשבוע</option>
+        <option value="monthly">חודשי — מספר פעמים בחודש</option>
+      </select>
+      <div id="glDailyWrap" style="margin-top:8px"><label class="fld">תאריך</label><div id="glDate"></div></div>
+      <div id="glWeeklyWrap" class="hide" style="margin-top:8px"><label class="fld">כמה ימים בשבוע (יעד)</label><select id="glWeekTarget"></select></div>
+      <div id="glMonthlyWrap" class="hide" style="margin-top:8px"><label class="fld">כמה פעמים בחודש (יעד)</label><input id="glMonthTarget" type="number" inputmode="numeric" min="1" placeholder="10"></div>
+      <button class="btn block" id="glAdd" style="margin-top:12px">הוסף יעד</button>
+    </div>
+    <div class="card">
+      <h2>🎯 היעדים שלי</h2>
+      <div class="muted" style="font-size:12px;margin-bottom:8px">התקדמות נוכחית. סימון הימים נעשה בכרטיס היום או בלוח.</div>
+      <div id="goalsList"></div>
+    </div>
+  </section>
+
   <!-- ===== SAVINGS ===== -->
   <section id="tab-sav" class="hide">
     <div class="card" style="text-align:center">
@@ -318,6 +353,7 @@
   <button data-tab="cal" class="on"><span class="ic">📅</span>לוח</button>
   <button data-tab="plan"><span class="ic">🔁</span>תכנון</button>
   <button data-tab="sum"><span class="ic">📋</span>סיכום</button>
+  <button data-tab="goals"><span class="ic">🎯</span>יעדים</button>
   <button data-tab="sav"><span class="ic">🏠</span>חיסכון</button>
   <button data-tab="more"><span class="ic">💾</span>גיבוי</button>
 </div></nav>
@@ -366,7 +402,7 @@ let view=(function(){const t=hebToday();return {y:t.year,m:t.month};})();
 let swipeLock=false;
 let modalFixed=null;
 
-function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r){r.plans=r.plans||[];r.reports=r.reports||[];r.months=r.months||{};r.events=r.events||[];r.plans.forEach(p=>{if(!p.flow)p.flow="out";});r.reports.forEach(x=>{if(!x.flow)x.flow="out";});return r;}}catch(e){}return {months:{},plans:[],reports:[],events:[]};}
+function load(){try{const r=JSON.parse(localStorage.getItem(KEY));if(r){r.plans=r.plans||[];r.reports=r.reports||[];r.months=r.months||{};r.events=r.events||[];r.goals=r.goals||[];r.goalChecks=r.goalChecks||{};r.plans.forEach(p=>{if(!p.flow)p.flow="out";});r.reports.forEach(x=>{if(!x.flow)x.flow="out";});return r;}}catch(e){}return {months:{},plans:[],reports:[],events:[],goals:[],goalChecks:{}};}
 function save(){db.updatedAt=Date.now();localStorage.setItem(KEY,JSON.stringify(db));if(typeof queueSync==="function")queueSync();}
 function uid(){return Math.random().toString(36).slice(2,9);}
 function hKey(y,m){return "H"+y+"-"+m;}
@@ -464,6 +500,7 @@ function render(){
   renderProgress();
   renderSavings();
   renderIncome();
+  renderGoals();
 }
 
 function renderCalendar(){
@@ -493,10 +530,12 @@ function renderCalendar(){
     if(iSum>0) dots+='<i class="d di"></i>';
     if(evs.length) dots+='<i class="d de"></i>';
     if(dots) html+='<div class="dots">'+dots+'</div>';
+    html+=cellGoalSquares(f);
     cell.innerHTML=html;
     cell.onclick=()=>{ if(swipeLock) return; openDay(f); };
     grid.appendChild(cell);
   }
+  grid.querySelectorAll("[data-gsq]").forEach(el=>el.onclick=(e)=>{ e.stopPropagation(); const p=el.getAttribute("data-gsq").split("|"); toggleCheck(p[0],+p[1]); render(); });
 }
 
 function renderQuick(){
@@ -579,6 +618,69 @@ function editEvent(id){
   $("#evIcs").onclick=()=>downloadIcs(e);
   $("#evDel").onclick=()=>{ db.events=db.events.filter(x=>x.id!==e.id); save();toast("נמחק");render();backFromEdit(fromDay); };
 }
+function isChecked(gid,f){return !!db.goalChecks[gid+"@"+f];}
+function toggleCheck(gid,f){const k=gid+"@"+f;if(db.goalChecks[k])delete db.goalChecks[k];else db.goalChecks[k]=1;save();}
+function goalsForDay(f){return db.goals.filter(g=>g.type!=="daily"||g.fixed===f);}
+function weekStartFixed(f){return f-weekdayOf(f);}
+function weekCount(gid,f){const s=weekStartFixed(f);let n=0;for(let i=0;i<7;i++)if(isChecked(gid,s+i))n++;return n;}
+function monthCount(gid,y,m){const s=fixedFromHebrew(y,m,1),ld=lastDayOfHMonth(y,m);let n=0;for(let d=0;d<ld;d++)if(isChecked(gid,s+d))n++;return n;}
+function goalProgress(g){
+  const tf=todayFixed();
+  if(g.type==="daily"){const done=isChecked(g.id,g.fixed);const missed=!done&&g.fixed<tf;const H=hebrewFromFixed(g.fixed);return {cls:done?"g-good":(missed?"g-bad":""),text:done?"בוצע ✓":(missed?"לא בוצע":"ממתין"),sub:heDay(H.day)+" "+hebMonthName(H.year,H.month)};}
+  if(g.type==="weekly"){const c=weekCount(g.id,tf),wEnd=weekStartFixed(tf)+6,reached=c>=g.target;return {cls:reached?"g-good":(wEnd<tf?"g-bad":""),text:c+" מתוך "+g.target+" (השבוע)",sub:""};}
+  const t=hebToday(),c=monthCount(g.id,t.year,t.month),mEnd=fixedFromHebrew(t.year,t.month,lastDayOfHMonth(t.year,t.month)),reached=c>=g.target;
+  return {cls:reached?"g-good":(mEnd<tf?"g-bad":""),text:c+" מתוך "+g.target+" (החודש)",sub:""};
+}
+function goalRows(f){
+  const gs=goalsForDay(f);
+  if(!gs.length) return '<div class="empty">אין יעדים. הוסף בלשונית "יעדים".</div>';
+  let s="";
+  gs.forEach(g=>{
+    const ck=isChecked(g.id,f); let sub="";
+    if(g.type==="weekly") sub=weekCount(g.id,f)+"/"+g.target+" השבוע";
+    else if(g.type==="monthly"){const H=hebrewFromFixed(f);sub=monthCount(g.id,H.year,H.month)+"/"+g.target+" החודש";}
+    s+='<div class="rowline" style="gap:10px"><label class="gck"><input type="checkbox" data-gck="'+g.id+'" '+(ck?"checked":"")+'><span class="box"></span></label><div style="flex:1"><div class="nm">'+esc(g.name)+'</div>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div></div>';
+  });
+  return s;
+}
+function cellGoalSquares(f){
+  const gs=goalsForDay(f); if(!gs.length) return "";
+  const tf=todayFixed(); let s='<div class="gsq">';
+  gs.forEach(g=>{const ck=isChecked(g.id,f);const miss=g.type==="daily"&&!ck&&f<tf;s+='<i class="gs'+(ck?" on":"")+(miss?" miss":"")+'" data-gsq="'+g.id+'|'+f+'" title="'+esc(g.name)+'"></i>';});
+  return s+'</div>';
+}
+function renderGoals(){
+  const box=$("#goalsList"); if(!box) return;
+  if(!db.goals.length){box.innerHTML='<div class="empty">אין יעדים עדיין. הוסף למעלה.</div>';return;}
+  const labels={daily:"יומי",weekly:"שבועי",monthly:"חודשי"};
+  box.innerHTML="";
+  ["daily","weekly","monthly"].forEach(tp=>{
+    const items=db.goals.filter(g=>g.type===tp); if(!items.length) return;
+    const hh=document.createElement("div");hh.className="sec-h";hh.textContent=labels[tp];box.appendChild(hh);
+    items.forEach(g=>{const p=goalProgress(g);const el=document.createElement("div");el.className="listitem";
+      el.innerHTML='<div><div class="nm">'+esc(g.name)+'</div><div class="sub">'+p.text+(p.sub?" · "+p.sub:"")+'</div></div><div style="display:flex;gap:8px;align-items:center">'+(p.cls?'<span class="pill '+(p.cls==="g-good"?"good":"bad")+'">'+(p.cls==="g-good"?"✓":"✗")+'</span>':'')+'<button class="btn sm soft" data-eg="'+g.id+'">✎</button></div>';
+      box.appendChild(el);});
+  });
+  box.querySelectorAll("[data-eg]").forEach(b=>b.onclick=()=>editGoal(b.getAttribute("data-eg")));
+}
+function editGoal(id){
+  const g=db.goals.find(x=>x.id===id); if(!g) return;
+  let tgt="";
+  if(g.type==="weekly"){let o="";for(let i=1;i<=7;i++)o+='<option value="'+i+'"'+(g.target===i?" selected":"")+'>'+i+' ימים</option>';tgt='<label class="fld">יעד ימים בשבוע</label><select id="egT">'+o+'</select>';}
+  else if(g.type==="monthly") tgt='<label class="fld">יעד פעמים בחודש</label><input id="egT" type="number" value="'+(+g.target)+'">';
+  else { const H=hebrewFromFixed(g.fixed); tgt='<label class="fld">תאריך</label>'+dateSelectsHTML(H.year,H.month,H.day,"egd"); }
+  const html='<div class="modal"><div class="sheet"><div class="mhead"><span class="mt">עריכת יעד</span><button class="mc" id="mClose">✕</button></div><div class="miniform"><label class="fld">שם</label><input id="egName" value="'+esc(g.name)+'">'+tgt+'<div class="row" style="margin-top:8px"><button class="btn" id="egSave">שמור</button><button class="btn danger" id="egDel">מחק</button></div></div></div></div>';
+  $("#modalRoot").innerHTML=html;
+  $("#mClose").onclick=closeModal; $(".modal").onclick=(e)=>{if(e.target.classList.contains("modal"))closeModal();};
+  $("#egSave").onclick=()=>{
+    g.name=$("#egName").value.trim()||g.name;
+    if(g.type==="weekly") g.target=+$("#egT").value;
+    else if(g.type==="monthly") g.target=Math.max(1,parseInt($("#egT").value)||1);
+    else { const dt=readDateSelects("egd"); g.fixed=dt.fixed; }
+    save();toast("עודכן ✓");render();closeModal();
+  };
+  $("#egDel").onclick=()=>{ db.goals=db.goals.filter(x=>x.id!==g.id); Object.keys(db.goalChecks).forEach(k=>{if(k.indexOf(g.id+"@")===0)delete db.goalChecks[k];}); save();toast("נמחק");render();closeModal(); };
+}
 function renderDayCard(){
   const f=modalFixed;const H=hebrewFromFixed(f);const hy=H.year,hm=H.month,hd=H.day;const g=gregFromFixed(f);
   const eP=plansOn(f).filter(p=>p.flow!=="in"), eR=reportsOn(f).filter(r=>r.flow!=="in");
@@ -587,6 +689,7 @@ function renderDayCard(){
     '<div class="mhead"><span class="mt">יום '+DAYS[weekdayOf(f)]+' · '+heDay(hd)+' '+hebMonthName(hy,hm)+' '+heYear(hy)+'<br><span class="muted" style="font-size:12px;font-weight:600">'+g.day+'/'+g.month+'/'+g.year+'</span></span><button class="mc" id="mClose">✕</button></div>'+
     '<div class="daygrp ev"><div class="gh">🗓️ אירועים ולו״ז</div>'+eventRows(eventsOn(f))+
       '<div class="row" style="margin-top:8px"><button class="btn ghost sm" id="btnAddEv">＋ הוסף אירוע</button></div></div>'+
+    '<div class="daygrp goal"><div class="gh">🎯 יעדים</div>'+goalRows(f)+'</div>'+
     '<div class="daygrp exp"><div class="gh">💸 הוצאות</div>'+
       '<div class="subh">מתוכנן</div>'+rowsHTML(eP,"plan")+
       '<div class="subh">דווח בפועל</div>'+rowsHTML(eR,"rep")+
@@ -608,6 +711,7 @@ function renderDayCard(){
   document.querySelectorAll("[data-editrep]").forEach(b=>b.onclick=()=>editReport(b.getAttribute("data-editrep")));
   $("#btnAddEv").onclick=()=>dayEventForm();
   document.querySelectorAll("[data-editev]").forEach(b=>b.onclick=()=>editEvent(b.getAttribute("data-editev")));
+  document.querySelectorAll("[data-gck]").forEach(cb=>cb.onchange=()=>{ toggleCheck(cb.getAttribute("data-gck"), modalFixed); render(); renderDayCard(); });
 }
 
 /* ---- day card: add forms ---- */
@@ -826,15 +930,15 @@ $("#impBtn").onclick=()=>$("#impFile").click();
 $("#impFile").onchange=(e)=>{
   const f=e.target.files[0]; if(!f) return;
   const rd=new FileReader();
-  rd.onload=()=>{ try{ const o=JSON.parse(rd.result); if(!o.plans&&!o.reports&&!o.events){throw 0;} db={months:o.months||{},plans:o.plans||[],reports:o.reports||[],events:o.events||[]}; save();toast("יובא ✓");render(); }catch(_){ toast("קובץ לא תקין"); } };
+  rd.onload=()=>{ try{ const o=JSON.parse(rd.result); if(!o.plans&&!o.reports&&!o.events&&!o.goals){throw 0;} db={months:o.months||{},plans:o.plans||[],reports:o.reports||[],events:o.events||[],goals:o.goals||[],goalChecks:o.goalChecks||{}}; save();toast("יובא ✓");render(); }catch(_){ toast("קובץ לא תקין"); } };
   rd.readAsText(f);
 };
-$("#resetBtn").onclick=()=>{ if(confirm("לאפס את כל הנתונים? פעולה בלתי הפיכה.")){ db={months:{},plans:[],reports:[],events:[]}; save();toast("אופס");render(); } };
+$("#resetBtn").onclick=()=>{ if(confirm("לאפס את כל הנתונים? פעולה בלתי הפיכה.")){ db={months:{},plans:[],reports:[],events:[],goals:[],goalChecks:{}}; save();toast("אופס");render(); } };
 
 /* ---- tabs ---- */
 function showTab(t){
   document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x.dataset.tab===t));
-  ["cal","plan","sum","sav","more"].forEach(s=>$("#tab-"+s).classList.toggle("hide",s!==t));
+  ["cal","plan","sum","goals","sav","more"].forEach(s=>$("#tab-"+s).classList.toggle("hide",s!==t));
   window.scrollTo(0,0);
 }
 document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
@@ -930,6 +1034,20 @@ if(!db.plans.length && !db.reports.length && !Object.keys(db.months).length){
 $("#savTargetSave").onclick=()=>{ const v=parseFloat($("#savTargetInput").value); const k=hKey(view.y,view.m); db.months[k]=db.months[k]||{}; db.months[k].savingsTarget=isNaN(v)?0:v; save();toast("יעד חיסכון נשמר ✓");render(); };
 refreshInstallUI();
 render();
+(function(){
+  const wt=$("#glWeekTarget"); if(wt){for(let i=1;i<=7;i++){const o=document.createElement("option");o.value=i;o.textContent=i+" ימים";if(i===5)o.selected=true;wt.appendChild(o);}}
+  const gd=$("#glDate"); if(gd){const t=hebToday();gd.innerHTML=dateSelectsHTML(t.year,t.month,t.day,"gld");}
+})();
+if($("#glType")) $("#glType").onchange=()=>{ const k=$("#glType").value; $("#glDailyWrap").classList.toggle("hide",k!=="daily"); $("#glWeeklyWrap").classList.toggle("hide",k!=="weekly"); $("#glMonthlyWrap").classList.toggle("hide",k!=="monthly"); };
+if($("#glAdd")) $("#glAdd").onclick=()=>{
+  const name=$("#glName").value.trim(), type=$("#glType").value;
+  if(!name){toast("הזן שם");return;}
+  const g={id:uid(),name,type};
+  if(type==="daily"){const dt=readDateSelects("gld");g.fixed=dt.fixed;}
+  else if(type==="weekly"){g.target=+$("#glWeekTarget").value;}
+  else { const t=Math.max(1,parseInt($("#glMonthTarget").value)||0); if(!t){toast("הזן יעד");return;} g.target=t; }
+  db.goals.push(g); save(); $("#glName").value=""; $("#glMonthTarget").value=""; toast("יעד נוסף ✓"); render();
+};
 (function(){
   const el=$("#tab-cal"); if(!el) return;
   let x0=null,y0=null;
