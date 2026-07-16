@@ -62,6 +62,14 @@
   .btn.exp{background:var(--bad-soft);color:var(--bad)} .btn.exp.solid{background:var(--bad);color:#fff}
   .btn.inc{background:var(--good-soft);color:var(--good)} .btn.inc.solid{background:var(--good);color:#fff}
   .sec-h.hexp{color:var(--bad)} .sec-h.hinc{color:var(--good)}
+  .daygrp{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:12px}
+  .daygrp.ev{background:var(--brand-soft);border-color:#c7d2fe}
+  .daygrp.exp{background:#fff6f6;border-color:#ffd3d3}
+  .daygrp.inc{background:#f1fbf4;border-color:#bfe6cd}
+  .daygrp .gh{font-size:16px;font-weight:800;display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .daygrp.ev .gh{color:var(--brand)} .daygrp.exp .gh{color:var(--bad)} .daygrp.inc .gh{color:var(--good)}
+  .daygrp .subh{font-size:12px;font-weight:800;color:var(--muted);margin:10px 0 2px}
+  .daygrp .rowline{border-bottom-color:rgba(0,0,0,.06)}
   .tabs{position:fixed;bottom:0;right:0;left:0;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:center;z-index:20}
   .tabs .inner{display:flex;max-width:860px;width:100%}
   .tabs button{flex:1;border:none;background:transparent;padding:10px 4px 12px;font-family:inherit;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
@@ -577,16 +585,16 @@ function renderDayCard(){
   const iP=plansOn(f).filter(p=>p.flow==="in"), iR=reportsOn(f).filter(r=>r.flow==="in");
   const html='<div class="modal"><div class="sheet">'+
     '<div class="mhead"><span class="mt">יום '+DAYS[weekdayOf(f)]+' · '+heDay(hd)+' '+hebMonthName(hy,hm)+' '+heYear(hy)+'<br><span class="muted" style="font-size:12px;font-weight:600">'+g.day+'/'+g.month+'/'+g.year+'</span></span><button class="mc" id="mClose">✕</button></div>'+
-    '<div class="sec-h" style="color:var(--brand)">🗓️ אירועים ולו״ז</div>'+eventRows(eventsOn(f))+
-    '<div class="row" style="margin-top:8px"><button class="btn ghost sm" id="btnAddEv">＋ הוסף אירוע</button></div>'+
-    '<hr style="border:none;border-top:1px solid var(--line);margin:16px 0">'+
-    '<div class="sec-h hexp">💸 הוצאות מתוכננות</div>'+rowsHTML(eP,"plan")+
-    '<div class="sec-h hexp">הוצאות שדווחו</div>'+rowsHTML(eR,"rep")+
-    '<div class="row" style="margin-top:10px"><button class="btn exp sm" id="btnPlanExp">＋ תכנון הוצאה</button><button class="btn exp solid sm" id="btnRepExp">＋ דיווח הוצאה</button></div>'+
-    '<hr style="border:none;border-top:1px solid var(--line);margin:16px 0">'+
-    '<div class="sec-h hinc">💰 הכנסות מתוכננות</div>'+rowsHTML(iP,"plan")+
-    '<div class="sec-h hinc">הכנסות שדווחו</div>'+rowsHTML(iR,"rep")+
-    '<div class="row" style="margin-top:10px"><button class="btn inc sm" id="btnPlanInc">＋ תכנון הכנסה</button><button class="btn inc solid sm" id="btnRepInc">＋ דיווח הכנסה</button></div>'+
+    '<div class="daygrp ev"><div class="gh">🗓️ אירועים ולו״ז</div>'+eventRows(eventsOn(f))+
+      '<div class="row" style="margin-top:8px"><button class="btn ghost sm" id="btnAddEv">＋ הוסף אירוע</button></div></div>'+
+    '<div class="daygrp exp"><div class="gh">💸 הוצאות</div>'+
+      '<div class="subh">מתוכנן</div>'+rowsHTML(eP,"plan")+
+      '<div class="subh">דווח בפועל</div>'+rowsHTML(eR,"rep")+
+      '<div class="row" style="margin-top:10px"><button class="btn exp sm" id="btnPlanExp">＋ תכנון הוצאה</button><button class="btn exp solid sm" id="btnRepExp">＋ דיווח הוצאה</button></div></div>'+
+    '<div class="daygrp inc"><div class="gh">💰 הכנסות</div>'+
+      '<div class="subh">מתוכנן</div>'+rowsHTML(iP,"plan")+
+      '<div class="subh">דווח בפועל</div>'+rowsHTML(iR,"rep")+
+      '<div class="row" style="margin-top:10px"><button class="btn inc sm" id="btnPlanInc">＋ תכנון הכנסה</button><button class="btn inc solid sm" id="btnRepInc">＋ דיווח הכנסה</button></div></div>'+
     '<div id="dayForm"></div>'+
     '</div></div>';
   $("#modalRoot").innerHTML=html;
